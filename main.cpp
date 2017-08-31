@@ -13,7 +13,7 @@
 #include <boost/filesystem.hpp>
 #include <boost/date_time.hpp>
 #include "duplicate_months.h"
-#include "station.h"
+#include "CStation.h"
 #include "netCDFUtils.h"
 #include "Internal_checks.h"
 

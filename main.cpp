@@ -33,11 +33,11 @@ string DATE[2]={ "19310101", "20170101"};
 
 
 
-void read_file(string file, vector<station> &station_info)
+void read_file(string file, vector<CStation> &station_info)
 {
 	/*    
 		Fonction pour lire le contenu du fichier candidate_stations.txt et affecter ses éléments aux attributs
-		de la classe station
+		de la classe CStation
 	*/
 	
 		char_separator<char> sep(",");
@@ -69,7 +69,7 @@ void read_file(string file, vector<station> &station_info)
 				i++;
 			}
 			
-			station stat = station::station(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), 
+			CStation stat = CStation::CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), 
 							atof(data[4].c_str()), data[7].c_str());
 						station_info.push_back(stat);
 		}
@@ -91,16 +91,16 @@ void read_file(string file, vector<station> &station_info)
 				data[i] = token.c_str();
 				i++;
 			}
-			station stat = station::station(data[0], atof(data[2].c_str()), atof(data[3].c_str()), atof(data[4].c_str()));
+			CStation stat = CStation::CStation(data[0], atof(data[2].c_str()), atof(data[3].c_str()), atof(data[4].c_str()));
 			station_info.push_back(stat);*/
 		
 		
 }
 
-void ncdf(vector<station> station_info)
+void ncdf(vector<CStation> station_info)
 {
 		
-	for (station stat : station_info)
+	for (CStation stat : station_info)
 	{
 		
 		string nom_file = (stat).getName() + " [" + (stat).getId() + "]";
@@ -127,7 +127,7 @@ int main(int arg, char * argv)
 	//char* file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\candidate_stations.txt";
 	string file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\Data\\Weather\\PEI 2015-2016.HourlyHdr.csv";
 			
-	vector<station> station_info;
+	vector<CStation> station_info;
 	//Obtenir la liste des stations
 	read_file(file,station_info);
 	/*for (size_t i = 0, len = station_info.size(); i < len; i++)

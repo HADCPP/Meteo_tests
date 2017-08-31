@@ -136,10 +136,10 @@ namespace NETCDFUTILS
 			return *att;
 
 	}
-	void MakeNetcdfFiles(const std::string fichier, std::string *date, station * stat);
-	void read(std::string filename, station * stat, std::vector<std::string> process_var, std::vector<std::string>  opt_var_list ,
+	void MakeNetcdfFiles(const std::string fichier, std::string *date, CStation * stat);
+	void read(std::string filename, CStation * stat, std::vector<std::string> process_var, std::vector<std::string>  opt_var_list ,
 		bool read_input_station_id = true, bool read_qc_flags = true, bool read_flagged_obs = true);
-	void write(const std::string filename1, station *stat, std::vector<std::string> var_list,
+	void write(const std::string filename1, CStation *stat, std::vector<std::string> var_list,
 		std::vector<std::string>  opt_var_list, std::valarray<bool> compressed, bool write_QC_flags = true,
 		bool write_flagged_obs = true);
 }

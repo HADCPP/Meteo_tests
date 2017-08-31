@@ -11,19 +11,22 @@ struct s_time
 		std::string units;
 		std::vector<int> data;
 	};
-struct MetVar
+
+
+class CMetVar
 {
 public:
-	MetVar::MetVar(){}
 
-	MetVar::MetVar(std::string name, std::string long_name)
+	CMetVar::CMetVar(std::string name="", std::string long_name="")
 	{
-		MetVar::m_name = name;
-		MetVar::m_long_name = long_name;
+		CMetVar::m_name = name;
+		CMetVar::m_long_name = long_name;
+
+		m_fdi = 0;
+		m_flagged_value = 0;
 	}
-	MetVar::~MetVar()
-	{
-	}
+	
+
 	std::string getName(){ return m_name; }
 	std::string getLong_Name(){ return m_long_name; }
 	std::string getUnits(){ return m_units; }
@@ -58,11 +61,9 @@ public:
 	std::string getCoordinates(){ return m_coordinates; }
 	std::string getCellmethods(){ return m_cell_methods; }
 	std::string getCalendar(){ return m_calendar; }
-	std::string toString()
-	{
-		return "Variable :" + m_name + ", " + m_long_name;
-	}
-	void MetVar::set_MetVar_attributes(std::string standard_name, std::string units, std::string mdi, std::string dtype)
+	std::string toString() 	{ return "Variable :" + m_name + ", " + m_long_name; }
+
+	void set_MetVar_attributes(std::string standard_name, std::string units, std::string mdi, std::string dtype)
 	{
 		m_units = units;
 		m_standard_name = standard_name;
@@ -70,10 +71,12 @@ public:
 		m_mdi = mdi;
 
 	}
-protected :std::string m_name;
-private:
+
+protected :
 	
+	std::string m_name;
 	std::string m_long_name;
+
 	std::string m_units;
 	std::string m_standard_name;
 	std::string m_mdi;
@@ -91,13 +94,16 @@ private:
 	std::valarray<float> m_masked_data; // données sans valeurs manquantes
 	std::valarray <float> m_flagged_obs;
 };
-class station
+
+
+
+class CStation
 {
 
 public:
-		station();
-		station(std::string id, std::string name, double lat, double lon, double elev, std::string wmo);
-		virtual ~station();
+		CStation();
+		CStation(std::string id, std::string name, double lat, double lon, double elev, std::string wmo);
+		virtual ~CStation();
 		std::string toString();
 		std::string getId();
 		std::string getName();
@@ -107,8 +113,8 @@ public:
 		*/
 		void setQc_flags(std::valarray<float> qc_flags,std::slice indices,int index);
 		std::valarray<std::valarray<float>> getQc_flags();
-		void setMetVar(MetVar metvar, std::string var);
-		MetVar* getMetvar(std::string var);
+		void setMetVar(CMetVar metvar, std::string var);
+		CMetVar* getMetvar(std::string var);
 		void setTime_units(std::string units);
 		void setTime_data(std::vector<int> data);
 		std::string getTime_units();
@@ -119,8 +125,10 @@ public:
 		double getLon();
 		double getElev();
 		
+		
 
-private:
+protected:
+
 	std::string m_id;
 	std::string m_name;
 	std::string m_wmoid;
@@ -128,7 +136,7 @@ private:
 	double m_lon;
 	double m_elev;
 	std::valarray<std::valarray<float>> m_qc_flags;
-	std::map<std::string, MetVar >  m_Met_var;
+	std::map<std::string, CMetVar >  m_Met_var;
 	s_time m_time;
 	std::string m_history;
 };

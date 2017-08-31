@@ -29,5 +29,5 @@ namespace
 namespace INTERNAL_CHECKS
 
 {
-	void internal_checks(std::vector<station> &station_info, test mytest , bool second,std::string *DATE);
+	void internal_checks(std::vector<CStation> &station_info, test mytest , bool second,std::string *DATE);
 }

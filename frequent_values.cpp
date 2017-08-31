@@ -8,7 +8,7 @@ using namespace UTILS;
 
 namespace FREQUENT_VALUES
 {
-	void  fvc(station* stat, std::vector<std::string> variable_list, std::vector<int>  flag_col, boost::gregorian::date start, boost::gregorian::date end, std::ofstream &logfile)
+	void  fvc(CStation* stat, std::vector<std::string> variable_list, std::vector<int>  flag_col, boost::gregorian::date start, boost::gregorian::date end, std::ofstream &logfile)
 	{
 
 		const int MIN_DATA_REQUIRED = 500;// to create histogram for complete record
@@ -41,7 +41,7 @@ namespace FREQUENT_VALUES
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			MetVar * st_var = stat->getMetvar(variable);
+			CMetVar * st_var = stat->getMetvar(variable);
 			valarray<float> filtered_data = apply_filter_flags(st_var);
 			float  reporting_accuracy = UTILS::reporting_accuracy(filtered_data);
 
@@ -231,14 +231,14 @@ namespace FREQUENT_VALUES
 						stat->setQc_flags(year_flags, std::slice((*year)[8].first, 6, 1), v);
 					else if (season == 4)
 					{
-						size_t split = (stat->getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 4, 1)]).size();
+						int split = (stat->getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 4, 1)]).size();
 						stat->setQc_flags(year_flags[std::slice(0,split+1,1)], std::slice((*year)[0].first, 4, 1), v);
 						stat->setQc_flags(year_flags[std::slice(split, year_flags.size()-split+1, 1)], std::slice((*year)[11].first, 2, 1), v);
 					}
 				}
 			}
 			v++;
-			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(stat->getQc_flags()[flag_col[v]], 0,'!');
+			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(stat->getQc_flags()[flag_col[v]], 0);
 			UTILS::print_flagged_obs_number(logfile, "Frequent value", variable, flag_locs.size());
 			//copy flags into attribute
 			st_var->setFlags(flag_locs, 1);

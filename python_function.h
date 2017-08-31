@@ -79,39 +79,12 @@ namespace PYTHON_FUNCTION
 		return vec;
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(std::valarray<T> v1, T value,char condition)
+	inline std::valarray<std::size_t> npwhere(std::valarray<T> v1, T value)
 	{
 		std::valarray<std::size_t> vec(v1.size());
-		
-		switch (condition)
+		for (size_t i = 0; i < v1.size(); i++)
 		{
-			case '=':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] == value) vec[i] = i;
-				}
-				break;
-			case '!':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] != value) vec[i] = i;
-				}
-				break;
-			case '<':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] < value) vec[i] = i;
-				}
-				break;
-			case '>':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] > value) vec[i] = i;
-				}
-				break;
-			default:
-				return;
-			break;	
+			if (v1[i] != value) vec[i] = i;
 		}
 		return vec;
 	}
@@ -181,26 +154,5 @@ namespace PYTHON_FUNCTION
 			val[i] = val2[i];
 		val1.resize(val.size());
 		val1 = val;
-	}
-	inline void np_roll(std::valarray<float> &val, size_t value)
-	{
-		std::valarray<float> val1(val.size());
-
-		for (size_t i = 0; i < value; i++)
-			val1[i] = val[val.size() - value + i];
-
-		for (size_t i = value; i < val.size(); i++)
-			val1[i] = val[i - value];
-		val = val1;
-	}
-	// recuperer l'indice du minimum de l'array (seule la première occurence est retournée)
-	inline int np_argmin(const std::valarray<float>& val)
-	{
-		float min = val.min();
-		int indice;
-		for (int i = 0; i < val.size();i++)
-		{
-			if (val[i] == min) return i;
-		}
 	}
 }

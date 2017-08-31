@@ -31,14 +31,14 @@ using namespace boost;
 
 namespace INTERNAL_CHECKS
 {
-	void internal_checks(vector<station>  &station_info, test mytest, bool second, string *DATE)
+	void internal_checks(vector<CStation>  &station_info, test mytest, bool second, string *DATE)
 	{
 		boost::gregorian::date  DATESTART = boost::gregorian::date_from_iso_string(DATE[0]);
 		boost::gregorian::date  DATEEND = boost::gregorian::date_from_iso_string(DATE[1]);
 		bool first = !second;
 		
 		int st = 0;
-		for (station stat: station_info )
+		for (CStation stat: station_info )
 		{
 			
 			cout << boost::gregorian::day_clock::local_day() << endl;  //Date du jour au format Www Mmm dd hh:mm:ss yyyy\n
@@ -101,14 +101,14 @@ namespace INTERNAL_CHECKS
 				NETCDFUTILS::read(filename,&stat,process_var,carry_thru_vars);
 				
 				//lire dans le fichier netcdf
-				logfile << "Total station record size" << stat.getMetvar("time")->getData().size() << endl;
+				logfile << "Total CStation record size" << stat.getMetvar("time")->getData().size() << endl;
 
 				match_to_compress = UTILS::create_fulltimes(&stat,process_var, DATESTART, DATEEND, carry_thru_vars);
 
-				//Initialiser station.qc_flags
+				//Initialiser CStation.qc_flags
 				for (string var : process_var)
 				{
-					MetVar* st_var = stat.getMetvar(var);
+					CMetVar* st_var = stat.getMetvar(var);
 					//st_var.setReportingStats(/*utils.monthly_reporting_statistics(st_var, DATASTART, DATAEND)*/);
 				}
 			}
@@ -155,7 +155,7 @@ namespace INTERNAL_CHECKS
 				if (std::abs(stat.getLat() <= 60))
 					cout << "  ";
 				else
-					logfile << "Diurnal Cycle Check not run as station latitude" << stat.getLat()<< "  > 60 ";
+					logfile << "Diurnal Cycle Check not run as CStation latitude" << stat.getLat()<< "  > 60 ";
 			}
 
 			//Write to file
@@ -174,7 +174,7 @@ namespace INTERNAL_CHECKS
 			if (logfile)
 				logfile.close();//Fermeture du fichier
 			cout << "Internal Checks completed" << endl;
-		} //end for station
+		} //end for CStation
 		
 	}
 }

@@ -1,5 +1,5 @@
 
-#include"station.h"
+#include"CStation.h"
 #include <vector>
 #include <string>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -47,7 +47,7 @@ namespace DUPLICATE_MONTHS
 	*/
 
 	inline void duplication_test(valarray<float> source_data, valarray<float> target_data, vector<int>valid, int sm, int tm,
-		map<int, int>::iterator source_month, map<int, int>::iterator  target_month, vector<int> &duplicated,station stat,int flag_col)
+		map<int, int>::iterator source_month, map<int, int>::iterator  target_month, vector<int> &duplicated,CStation stat,int flag_col)
 	{
 		is_month_duplicated(source_data, target_data, valid, sm, tm, duplicated);
 
@@ -57,7 +57,7 @@ namespace DUPLICATE_MONTHS
 		}
 	}
 	/*
-	:param obj station stat: station object with suitable attributes
+	:param obj CStation stat: CStation object with suitable attributes
 	:param list variable_list: list of netcdf variables to process
 	:param list full_variable_list: the variables for flags to be applied to
 	:param list flag_col: which column to set in flag array
@@ -66,7 +66,7 @@ namespace DUPLICATE_MONTHS
 	:param file logfile: logfile to store outputs
 
 	*/
-	void dmc(station stat, std::vector<std::string> variable_list, std::vector<std::string> full_variable_list,
+	void dmc(CStation stat, std::vector<std::string> variable_list, std::vector<std::string> full_variable_list,
 		int flag_col, boost::gregorian::date start, boost::gregorian::date end, ofstream &logfile)
 	{
 		const  int MIN_DATA_REQUIRED = 20;
@@ -77,7 +77,7 @@ namespace DUPLICATE_MONTHS
 		int v = 0;
 		for (string variable: variable_list)
 		{
-			MetVar * st_var = stat.getMetvar(variable); //Recuperer la variable meteo de la station
+			CMetVar * st_var = stat.getMetvar(variable); //Recuperer la variable meteo de la CStation
 			vector<int> duplicated;
 			int sm = 0;
 			for (map<int, int>::iterator source_month = month_ranges.begin(); source_month != month_ranges.end(); ++source_month)
@@ -98,7 +98,7 @@ namespace DUPLICATE_MONTHS
 						target_data = st_var->getData()[slice(target_month->first, taille_slice, 1)];
 						tm++;
 						//match the data periods
-						size_t overlap = std::min(source_data.size(), target_data.size());
+						int overlap = std::min(source_data.size(), target_data.size());
 						valarray<float> s_data, t_data;
 						s_data = source_data[slice(0,overlap,1)];
 						t_data = source_data[slice(0,overlap,1)];

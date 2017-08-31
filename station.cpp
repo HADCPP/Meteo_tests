@@ -6,9 +6,9 @@
 
 using namespace std;
 
-struct MetVar;
+struct CMetVar;
 
-	station::station(string id,string name, double lat, double lon, double elev,string wmo)
+	CStation::CStation(string id,string name, double lat, double lon, double elev,string wmo)
 	{
 		m_id = id;
 		m_lon = lon;
@@ -17,37 +17,37 @@ struct MetVar;
 		m_name = name;
 		m_wmoid = wmo;
 	}
-	station::~station()
+	CStation::~CStation()
 	{
 	}
-	string station::toString()
+	string CStation::toString()
 	{
-		return "station  :" + m_id + "  "+ m_name+  "+  Longitude: " + to_string(m_lon) + "  Latitude:  " + to_string(m_lat) + "  Elevation  :" + to_string(m_elev);
+		return "CStation  :" + m_id + "  "+ m_name+  "+  Longitude: " + to_string(m_lon) + "  Latitude:  " + to_string(m_lat) + "  Elevation  :" + to_string(m_elev);
 
 	}
-	double station::getLat(){ return station::m_lat; }
-	double station::getLon(){ return station::m_lon; }
-	double station::getElev(){ return station::m_elev; }
-	string station::getId(){ return station::m_id; }
-	string station::getName(){ return station::m_name; }
-	string station::getWmoId(){ return station::m_wmoid; }
-	void station::setQc_flags(std::valarray<std::valarray<float>> qc_flags){ station::m_qc_flags = qc_flags; }
-	void station::setQc_flags(std::valarray<float> qc_flags, std::slice indices, int index)
+	double CStation::getLat(){ return CStation::m_lat; }
+	double CStation::getLon(){ return CStation::m_lon; }
+	double CStation::getElev(){ return CStation::m_elev; }
+	string CStation::getId(){ return CStation::m_id; }
+	string CStation::getName(){ return CStation::m_name; }
+	string CStation::getWmoId(){ return CStation::m_wmoid; }
+	void CStation::setQc_flags(std::valarray<std::valarray<float>> qc_flags){ CStation::m_qc_flags = qc_flags; }
+	void CStation::setQc_flags(std::valarray<float> qc_flags, std::slice indices, int index)
 	{
-		station::m_qc_flags[index][indices] = qc_flags;
+		CStation::m_qc_flags[index][indices] = qc_flags;
 	}
-	std::valarray<std::valarray<float>> station::getQc_flags(){ return station::m_qc_flags; }
-	void station::setMetVar(MetVar metvar, string var){ (station::m_Met_var)[var]=metvar; }
-	MetVar* station::getMetvar(string var)
+	std::valarray<std::valarray<float>> CStation::getQc_flags(){ return CStation::m_qc_flags; }
+	void CStation::setMetVar(CMetVar metvar, string var){ (CStation::m_Met_var)[var]=metvar; }
+	CMetVar* CStation::getMetvar(string var)
 	{ 
 		
-		return &station::m_Met_var[var]; 
+		return &CStation::m_Met_var[var]; 
 	}
-	void station::setTime_units(string units){ m_time.units = units; }
-	void station::setTime_data(std::vector<int> data){ copy(data.begin(), data.end(), std::back_inserter(m_time.data)); }
-	std::string station::getTime_units(){ return station::m_time.units; }
-	std::vector<int> station::getTime_data(){ return station::m_time.data; }
-	void station::setHistory(string history){ station::m_history = history; }
-	std::string station::getHistory(){ return station::m_history; }
+	void CStation::setTime_units(string units){ m_time.units = units; }
+	void CStation::setTime_data(std::vector<int> data){ copy(data.begin(), data.end(), std::back_inserter(m_time.data)); }
+	std::string CStation::getTime_units(){ return CStation::m_time.units; }
+	std::vector<int> CStation::getTime_data(){ return CStation::m_time.data; }
+	void CStation::setHistory(string history){ CStation::m_history = history; }
+	std::string CStation::getHistory(){ return CStation::m_history; }
 
 	

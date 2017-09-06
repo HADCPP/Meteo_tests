@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
-#include "station.h"
+#include "CStation.h"
 #include <vector>
 #include <boost/date_time/gregorian/gregorian.hpp>
-#include<iostream>
+#include <iostream>
 namespace
 {
 	const std::string SEASONS[5] = { "Ann", "MAM", "JJA", "SON", "D+JF" };

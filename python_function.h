@@ -110,7 +110,7 @@ namespace PYTHON_FUNCTION
 				}
 				break;
 			default:
-				return;
+				
 			break;	
 		}
 		return vec;
@@ -201,7 +201,7 @@ namespace PYTHON_FUNCTION
 	inline int np_argmin(const std::valarray<float>& val)
 	{
 		float min = val.min();
-		int indice;
+		
 		for (int i = 0; i < val.size();i++)
 		{
 			if (val[i] == min) return i;

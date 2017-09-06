@@ -1,6 +1,6 @@
 #include "frequent_values.h"
 #include "utils.h"
-#include "station.h"
+#include "CStation.h"
 #include "python_function.h"
 
 using namespace std;
@@ -238,7 +238,7 @@ namespace FREQUENT_VALUES
 				}
 			}
 			v++;
-			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(stat->getQc_flags()[flag_col[v]], 0);
+			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(stat->getQc_flags()[flag_col[v]], 0,'!');
 			UTILS::print_flagged_obs_number(logfile, "Frequent value", variable, flag_locs.size());
 			//copy flags into attribute
 			st_var->setFlags(flag_locs, 1);

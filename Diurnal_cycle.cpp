@@ -29,17 +29,14 @@ namespace DIURNAL
 	}
 
 	
-
-
-	void dcc(station& stat, vector<string>variable_list, vector<string> full_variable_list, vector<int>flag_col,
-		ofstream &logfile)
+	void dcc(CStation& station ,vector<string>variable_list, vector<string> full_variable_list, vector<int>flag_col,ofstream &logfile)
 	{
 		//list of flags for each variable
 		valarray<float> diurnal_flags;
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			MetVar *st_var = stat.getMetvar(variable);
+			CMetVar *st_var = station.getMetvar(variable);
 			valarray<float> filtered_data = UTILS::apply_filter_flags(st_var);
 			vector<valarray<float>> v_filtered_data;
 			int iteration = 1;

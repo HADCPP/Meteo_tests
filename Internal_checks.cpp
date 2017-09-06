@@ -1,7 +1,7 @@
 #include"Internal_checks.h"
 #include<vector>
 #include <ctime>
-#include "station.h"
+#include "CStation.h"
 #include<sstream>
 #include<iostream>
 #include <string>
@@ -98,7 +98,7 @@ namespace INTERNAL_CHECKS
 					cout << e.what() << endl;
 				}
 				//read in data
-				NETCDFUTILS::read(filename,&stat,process_var,carry_thru_vars);
+				NETCDFUTILS::read(filename,stat,process_var,carry_thru_vars);
 				
 				//lire dans le fichier netcdf
 				logfile << "Total CStation record size" << stat.getMetvar("time")->getData().size() << endl;
@@ -124,7 +124,7 @@ namespace INTERNAL_CHECKS
 				{
 					cout << e.what() << endl;
 				}
-				NETCDFUTILS::read(filename, &stat, process_var, carry_thru_vars);
+				NETCDFUTILS::read(filename, stat, process_var, carry_thru_vars);
 				match_to_compress = UTILS::create_fulltimes(&stat, process_var, DATESTART, DATEEND, carry_thru_vars);
 			}
 			if (mytest.duplicate) //check on temperature ONLY
@@ -162,12 +162,12 @@ namespace INTERNAL_CHECKS
 			if (first)
 			{
 				string filename = NETCDF_DATA_LOCS + (stat).getId() + "_internal.nc";
-				NETCDFUTILS::write(filename, &stat, process_var, carry_thru_vars, match_to_compress);
+				NETCDFUTILS::write(filename, stat, process_var, carry_thru_vars, match_to_compress);
 			}
 			else if (second)
 			{
 				string filename = NETCDF_DATA_LOCS + (stat).getId() + "_internal2.nc";
-				NETCDFUTILS::write(filename, &stat, process_var, carry_thru_vars, match_to_compress);
+				NETCDFUTILS::write(filename, stat, process_var, carry_thru_vars, match_to_compress);
 			}
 			logfile << boost::gregorian::day_clock::local_day() << endl;
 			logfile << "processing took " << posix_time::second_clock::local_time() - process_start_time << "  s" << endl;

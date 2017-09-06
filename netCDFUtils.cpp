@@ -15,7 +15,7 @@
 #include "ncDim.h"
 #include "ncVar.h"
 #include <vector>
-#include "station.h"
+#include "CStation.h"
 #include <zlib.h>
 #include <cstring>
 #include <boost/filesystem.hpp>
@@ -35,9 +35,9 @@ using namespace netCDF::exceptions;
 namespace NETCDFUTILS
 {
 
-	void MakeNetcdfFiles(const string fichier, string *DATE, station * stat)
+	void MakeNetcdfFiles(const string fichier, string *DATE, CStation& station)
 	{
-		string namefile = stat->getId();
+		string namefile = station.getId();
 
 
 		boost::gregorian::date  DATESTART = boost::gregorian::date_from_iso_string(DATE[0]);
@@ -243,9 +243,9 @@ namespace NETCDFUTILS
 		double t_latitude[1];
 		double t_longitude[1];
 		double t_elevation[1];
-		t_latitude[0] = stat->getLat();
-		t_longitude[0] = stat->getLon();
-		t_elevation[0] = stat->getElev();
+		t_latitude[0] = station.getLat();
+		t_longitude[0] = station.getLon();
+		t_elevation[0] = station.getElev();
 		write_coordinates<double>(&ncFile, "latitude", coords_len, "latitude", "station_latitude", "degrees_north", "Y", t_latitude);
 		write_coordinates<double>(&ncFile, "longitude", coords_len, "longitude", "station_longitude", "degrees_east", "X", t_longitude);
 		write_coordinates<double>(&ncFile, "elevation", coords_len, "surface_altitude", "vertical distance above the surface", "meters", "Z", t_elevation);
@@ -255,7 +255,7 @@ namespace NETCDFUTILS
 		nc_var.putAtt("Standard_name", "station_identification_code");
 		nc_var.putAtt("long_name", "Station ID number");
 		char strtoarray_ID[10];
-		strcpy(strtoarray_ID, stat->getId().c_str());
+		strcpy(strtoarray_ID, station.getId().c_str());
 		nc_var.putVar(strtoarray_ID);
 		// create variables
 		NcVar timesvar = ncFile.addVar("time", ncDouble, time);
@@ -327,10 +327,10 @@ namespace NETCDFUTILS
 		boost::format fmter("%1%");
 		fmter% boost::gregorian::day_clock().local_day();
 		ncFile.putAtt("file_created", fmter.str());
-		ncFile.putAtt("station_id", stat->getId());
-		ncFile.putAtt("latitude", boost::lexical_cast<std::string>(stat->getLat()));
-		ncFile.putAtt("longitude", boost::lexical_cast<std::string>(stat->getLon()));
-		ncFile.putAtt("elevation", boost::lexical_cast<std::string>(stat->getElev()));
+		ncFile.putAtt("station_id", station.getId());
+		ncFile.putAtt("latitude", boost::lexical_cast<std::string>(station.getLat()));
+		ncFile.putAtt("longitude", boost::lexical_cast<std::string>(station.getLon()));
+		ncFile.putAtt("elevation", boost::lexical_cast<std::string>(station.getElev()));
 		ncFile.putAtt("Conventions", " CF - 1.6");
 		ncFile.putAtt("date_created", fmter.str());
 		ncFile.putAtt("history", "Created by ...");
@@ -391,7 +391,7 @@ namespace NETCDFUTILS
 
 		//zip file
 		cout << ncFile.getName() << endl;
-		cout << "Done station " << stat->getName() << endl;
+		cout << "Done station " << station.getName() << endl;
 		cout << boost::gregorian::day_clock::local_day() - dbg_sttime << endl;
 		cout << boost::gregorian::day_clock::local_day() << endl;
 
@@ -401,7 +401,7 @@ namespace NETCDFUTILS
 	//and appends attributes to station object variables to be read passed
 	// in as list
 	*/
-	void read(string filename, station *stat, std::vector<std::string> process_var, vector<string>  opt_var_list, bool read_input_station_id, bool read_qc_flags, bool read_flagged_obs)
+	void read(string filename, CStation& station, std::vector<std::string> process_var, vector<string>  opt_var_list, bool read_input_station_id, bool read_qc_flags, bool read_flagged_obs)
 	{
 
 		
@@ -432,9 +432,9 @@ namespace NETCDFUTILS
 				for (map<string, NcVarAtt>::iterator it = atts.begin(); it !=atts.end(); it++)
 				cout << (*it).first << endl;*/
 				string att = getAttribute<string>(var, "long_name");
-				//Instanciation  objet MetVar avec le nom de la variable netcdf
-				MetVar this_var = MetVar(*variable, att);
-				//Ajout des attributs à l'objet Metvar
+				//Instanciation  objet CMetVar avec le nom de la variable netcdf
+				CMetVar this_var = CMetVar(*variable, att);
+				//Ajout des attributs à l'objet CMetVar
 				//Attribut unit
 				try{ this_var.setUnits(getAttribute<string>(var, "units")); }
 				catch (NcException &e)
@@ -458,7 +458,7 @@ namespace NETCDFUTILS
 				{
 					this_var.setCalendar(getAttribute<string>(var, "calendar"));
 					
-					stat->setTime_units(getAttribute<string>(var, "units"));
+					station.setTime_units(getAttribute<string>(var, "units"));
 					
 				}
 				//Attribut missing value (mdi)
@@ -510,7 +510,7 @@ namespace NETCDFUTILS
 						this_var.setFlagged_value(-888);
 				}
 				//Ajouter la variable méteo à la liste des variables de la station stat
-				stat->setMetVar(this_var, *variable);
+				station.setMetVar(this_var, *variable);
 			}
 			
 			//read in the qc_flags array
@@ -523,7 +523,7 @@ namespace NETCDFUTILS
 						cout << "no QC flags available" << endl;
 					else
 					{
-						const int ligne = stat->getMetvar("time")->getData().size();
+						const int ligne = station.getMetvar("time")->getData().size();
 						float **qcflags = 0;
 						qcflags = new float*[ligne];
 						for (size_t i = 0; i < ligne; i++)
@@ -544,12 +544,12 @@ namespace NETCDFUTILS
 					cout << "no flagged obs available in netcdf file " << endl;
 				else // if doesn't exist, make an empty array 
 				{
-					const int ligne = stat->getMetvar("time")->getData().size();
+					const int ligne = station.getMetvar("time")->getData().size();
 					for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); var++)
 					{
-						valarray<float> flaggedobs(static_cast<float>(atoi(stat->getMetvar(*var)->getMdi().c_str())), ligne);
+						valarray<float> flaggedobs(static_cast<float>(atoi(station.getMetvar(*var)->getMdi().c_str())), ligne);
 						//push array into relevant attribute
-						stat->getMetvar(*var)->setFlagged_obs(flaggedobs);
+						station.getMetvar(*var)->setFlagged_obs(flaggedobs);
 					}
 				}
 			}
@@ -567,7 +567,7 @@ namespace NETCDFUTILS
 				for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); ++var,v++)
 				{
 					valarray<float> report(reporting[v]);
-					stat->getMetvar(*var)->setReportingStats(report);
+					station.getMetvar(*var)->setReportingStats(report);
 				}
 				delete[] reporting;
 			}
@@ -575,17 +575,17 @@ namespace NETCDFUTILS
 			
 			// Global attribute history
 			if(ncFile.getAtt("history").isNull())
-				stat->setHistory("");
+				station.setHistory("");
 			else
 			{
 				string att;
 				ncFile.getAtt("history").getValues(att);
-				stat->setHistory(att);
+				station.setHistory(att);
 			}
 	}
 	
 	/*Writes the netcdf file*/
-	void write(const string filename1, station *stat, std::vector<std::string> var_list, vector<string>  opt_var_list, valarray<bool> compressed,
+	void write(const string filename1, CStation& station, std::vector<std::string> var_list, vector<string>  opt_var_list, valarray<bool> compressed,
 		bool write_QC_flags , bool write_flagged_obs  )
 	{
 		
@@ -598,7 +598,7 @@ namespace NETCDFUTILS
 		if (compressed.size()!=0)
 			time_dim = outfile.addDim("time", compressed.size());
 		else
-			time_dim = outfile.addDim("time", stat->getTime_data().size());
+			time_dim = outfile.addDim("time", station.getTime_data().size());
 		//sort character dimensions
 		NcDim long_char_dim = outfile.addDim("long_character_length", 12);
 		NcDim char_dim = outfile.addDim("character_length", 4);
@@ -623,7 +623,7 @@ namespace NETCDFUTILS
 		NcDim reportingT_dim, reportingV_dim, reporting2_dim;
 		try
 		{
-			MetVar* st_var = stat->getMetvar(var_list[0]);
+			CMetVar* st_var = station.getMetvar(var_list[0]);
 			reportingT_dim = outfile.addDim("reporting_t", st_var->getReportingStats().size()); // N months
 			reportingV_dim = outfile.addDim("reporting_v", var_list.size());
 			reporting2_dim = outfile.addDim("reporting_2", 2); // accuracy and frequency
@@ -633,9 +633,9 @@ namespace NETCDFUTILS
 			cout << "no reporting information - cannot set up dimensions" << endl;
 		}
 		//write station coordinates
-		double t_latitude[1] = { stat->getLat() };
-		double t_longitude[1] = { stat->getLon() };
-		double t_elevation[1] = { stat->getElev() };
+		double t_latitude[1] = { station.getLat() };
+		double t_longitude[1] = { station.getLon() };
+		double t_elevation[1] = { station.getElev() };
 		write_coordinates<double>(&outfile, "longitude", coords_len, "longitude", "station_longitude", "degrees_east", "X", t_longitude);
 		write_coordinates<double>(&outfile, "latitude", coords_len, "latitude", "station_latitude", "degrees_north", "Y", t_latitude);
 		write_coordinates<double>(&outfile, "elevation", coords_len, "surface_altitude", "vertical distance above the surface", "meters", "Z", t_elevation);
@@ -645,7 +645,7 @@ namespace NETCDFUTILS
 		//nc_var.putAtt("Standard_name", "station_identification_code");
 		nc_var.putAtt("long_name", "Station ID number");
 		char strtoarray_ID[10];
-		strcpy(strtoarray_ID, stat->getId().c_str());
+		strcpy(strtoarray_ID, station.getId().c_str());
 		nc_var.setCompression(false, true, 9);
 		nc_var.putVar(strtoarray_ID);
 		
@@ -661,7 +661,7 @@ namespace NETCDFUTILS
 		full_var_list.push_back("input_station_id");
 		for (string var : full_var_list)
 		{
-			MetVar* st_var = stat->getMetvar(var);
+			CMetVar* st_var = station.getMetvar(var);
 			if (var == "input_station_id")
 				nc_var = outfile.addVar(st_var->getName(), ncString, dims);
 			else
@@ -726,7 +726,7 @@ namespace NETCDFUTILS
 				int v = 0;
 				for (string var : var_list)
 				{
-					MetVar* st_var = stat->getMetvar(var);
+					CMetVar* st_var = station.getMetvar(var);
 					//flagged_obs[:, v] = st_var.flagged_obs
 					nc_var = outfile.addVar("flagged_value", ncDouble, time_flag);
 					nc_var.putAtt("units", "1");
@@ -760,7 +760,7 @@ namespace NETCDFUTILS
 			
 			for (string var : var_list)
 			{
-				MetVar* st_var = stat->getMetvar(var);
+				CMetVar* st_var = station.getMetvar(var);
 				//std::copy(begin(st_var.getReportingStats()), end(st_var.getReportingStats()), std::back_inserter(reporting_stats)) ;
 				reporting_stats = reporting_stats + st_var->getReportingStats();
 			}
@@ -794,7 +794,7 @@ namespace NETCDFUTILS
 		outfile.putAtt("featureType", "timeSeries");
 		outfile.putAtt("Conventions", " CF - 1.6");
 		outfile.putAtt("date_created", fmter.str());
-		outfile.putAtt("history", stat->getHistory());
+		outfile.putAtt("history", station.getHistory());
 
 	}
 }

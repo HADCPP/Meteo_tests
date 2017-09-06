@@ -1,6 +1,6 @@
 #pragma once
 #include<vector>
-#include "station.h"
+#include "CStation.h"
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <valarray>
 

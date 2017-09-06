@@ -26,7 +26,7 @@ using namespace INTERNAL_CHECKS;
 
 
 
-string DATE[2]={ "19310101", "20170101"};
+ string DATE[2]={ "19310101", "20170101"};
 
 //string LOG_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\Data\\";
 //string CSV_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\PEI 2015-2016H\\";
@@ -69,9 +69,9 @@ void read_file(string file, vector<CStation> &station_info)
 				i++;
 			}
 			
-			CStation stat = CStation::CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), 
+			CStation station = CStation::CStation(data[0], data[1], atof(data[2].c_str()), atof(data[3].c_str()), 
 							atof(data[4].c_str()), data[7].c_str());
-						station_info.push_back(stat);
+						station_info.push_back(station);
 		}
 		/*for (size_t i = 0, len = station_info.size(); i < len; i++)
 			cout <<station_info.at(i).toString()<<endl;*/
@@ -113,7 +113,7 @@ void ncdf(vector<CStation> station_info)
 		cout <<"Writing data to   "<<NETCDF_DATA_LOCS << endl;
 		std::size_t pos = nom_file.find(' ');
 		//nom_file = nom_file.substr(0,pos);
-		MakeNetcdfFiles(fichier, DATE,&stat); // Creer les fichiers netcdf
+		MakeNetcdfFiles(fichier, DATE, stat); // Creer les fichiers netcdf
 	}
 	cout << "NetCDF files created" << endl;
 }

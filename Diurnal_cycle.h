@@ -1,3 +1,4 @@
+#pragma once
 #include "CStation.h"
 #include "vector"
 #include "string"

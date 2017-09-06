@@ -1,5 +1,5 @@
 #include"utils.h"
-#include "station.h"
+#include "CStation.h"
 #include<vector>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>

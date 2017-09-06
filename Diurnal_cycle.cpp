@@ -31,7 +31,7 @@ namespace DIURNAL
 	
 
 
-	void dcc(station& stat, vector<string>variable_list, vector<string> full_variable_list, vector<int>flag_col,
+	void dcc(CStation& station, vector<string>variable_list, vector<string> full_variable_list, vector<int>flag_col,
 		ofstream &logfile)
 	{
 		//list of flags for each variable
@@ -39,7 +39,7 @@ namespace DIURNAL
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			MetVar *st_var = stat.getMetvar(variable);
+			CMetVar *st_var = station.getMetvar(variable);
 			valarray<float> filtered_data = UTILS::apply_filter_flags(st_var);
 			vector<valarray<float>> v_filtered_data;
 			int iteration = 1;
@@ -273,9 +273,10 @@ namespace DIURNAL
 					if (to_flag[d] == 1)
 					{
 						valarray<float> dummy(1., filtered_data.size());      //filtered data ne contient aucune donnée masquée
-						dcc_flags.at[d] = dummy;
+						dcc_flags.push_back(dummy);
 						dummy.free();
 					}
+			
 				}
 				
 				cout << "currently matches IDL, but should all hours in days have flags set, not just the missing/flagged ones?" << endl;

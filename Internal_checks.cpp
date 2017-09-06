@@ -38,16 +38,16 @@ namespace INTERNAL_CHECKS
 		bool first = !second;
 		
 		int st = 0;
-		for (CStation stat: station_info )
+		for (CStation station: station_info )
 		{
 			
 			cout << boost::gregorian::day_clock::local_day() << endl;  //Date du jour au format Www Mmm dd hh:mm:ss yyyy\n
 			cout << "Station Number :  " << st + 1 << " / " << station_info.size() << endl;
-			cout << "Station Identifier:  " << (stat).getId() << endl;
+			cout << "Station Identifier:  " << (station).getId() << endl;
 			// Ouverture du fichier en mode ecriture lors du premier appel de la fonction ou en mode append la seconde fois
 			ofstream logfile;
 			stringstream sst;
-			sst << LOG_OUTFILE_LOCS << (stat).getId() << ".log";
+			sst << LOG_OUTFILE_LOCS << (station).getId() << ".log";
 
 			if (first)
 			{
@@ -67,20 +67,20 @@ namespace INTERNAL_CHECKS
 			}
 			logfile << boost::gregorian::day_clock::local_day() << endl;
 			logfile << "Internal Checks" << endl;
-			logfile << "Station Identifier : " << (stat).getId() << endl;
+			logfile << "Station Identifier : " << (station).getId() << endl;
 
 			boost::posix_time::ptime process_start_time = boost::posix_time::second_clock::local_time();
 			
 			/* latitude and longitude check  */
-			if (std::abs((stat).getLat()) > 90.)
+			if (std::abs((station).getLat()) > 90.)
 			{
-				logfile << (stat).getId() << "	Latitude check" << DATESTART.year()<<DATEEND.year()-1<<"  Unphysical latitude ";
+				logfile << (station).getId() << "	Latitude check" << DATESTART.year()<<DATEEND.year()-1<<"  Unphysical latitude ";
 				logfile.close();
 				continue;
 			}
-			if (std::abs((stat).getLon()) > 180.)
+			if (std::abs((station).getLon()) > 180.)
 			{
-				logfile << (stat).getId() << "Longitude Check"  << DATESTART.year() << DATEEND.year() - 1 << "  Unphysical longitude ";
+				logfile << (station).getId() << "Longitude Check"  << DATESTART.year() << DATEEND.year() - 1 << "  Unphysical longitude ";
 				logfile.close();
 				continue;
 			}
@@ -89,7 +89,7 @@ namespace INTERNAL_CHECKS
 			if (first)
 			{
 				// tester si le fichier existe
-				string filename = NETCDF_DATA_LOCS + (stat).getId() + ".nc";
+				string filename = NETCDF_DATA_LOCS + (station).getId() + ".nc";
 				boost::filesystem::path p{ filename};
 				try
 				{	boost::filesystem::exists(p);}
@@ -98,23 +98,23 @@ namespace INTERNAL_CHECKS
 					cout << e.what() << endl;
 				}
 				//read in data
-				NETCDFUTILS::read(filename,stat,process_var,carry_thru_vars);
+				NETCDFUTILS::read(filename,station,process_var,carry_thru_vars);
 				
 				//lire dans le fichier netcdf
-				logfile << "Total CStation record size" << stat.getMetvar("time")->getData().size() << endl;
+				logfile << "Total CStation record size" << station.getMetvar("time")->getData().size() << endl;
 
-				match_to_compress = UTILS::create_fulltimes(&stat,process_var, DATESTART, DATEEND, carry_thru_vars);
+				match_to_compress = UTILS::create_fulltimes(station,process_var, DATESTART, DATEEND, carry_thru_vars);
 
 				//Initialiser CStation.qc_flags
 				for (string var : process_var)
 				{
-					CMetVar* st_var = stat.getMetvar(var);
-					//st_var.setReportingStats(/*utils.monthly_reporting_statistics(st_var, DATASTART, DATAEND)*/);
+					CMetVar *st_var = station.getMetvar(var);
+					//st_var->setReportingStats(/*utils.monthly_reporting_statistics(st_var, DATASTART, DATAEND)*/);
 				}
 			}
 			else if (second)
 			{
-				string filename = NETCDF_DATA_LOCS + (stat).getId() + "_mask.nc";
+				string filename = NETCDF_DATA_LOCS + (station).getId() + "_mask.nc";
 				boost::filesystem::path p{ filename };
 				try
 				{
@@ -124,15 +124,15 @@ namespace INTERNAL_CHECKS
 				{
 					cout << e.what() << endl;
 				}
-				NETCDFUTILS::read(filename, stat, process_var, carry_thru_vars);
-				match_to_compress = UTILS::create_fulltimes(&stat, process_var, DATESTART, DATEEND, carry_thru_vars);
+				NETCDFUTILS::read(filename, station, process_var, carry_thru_vars);
+				match_to_compress = UTILS::create_fulltimes(station, process_var, DATESTART, DATEEND, carry_thru_vars);
 			}
 			if (mytest.duplicate) //check on temperature ONLY
 			{
 				//Appel à la fonction duplicate_months de qc_tests
 				vector<string> variable_list = { "temperature" };
 				
-				DUPLICATE_MONTHS::dmc(stat,variable_list, process_var,0, DATESTART, DATEEND,logfile);
+				DUPLICATE_MONTHS::dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile);
 			}
 			if (mytest.odd)
 			{
@@ -148,26 +148,26 @@ namespace INTERNAL_CHECKS
 				flag_col.push_back(3);
 				flag_col.push_back(2);
 				flag_col.push_back(1);*/
-				FREQUENT_VALUES::fvc(&stat, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
+				FREQUENT_VALUES::fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
 			}
 			if (mytest.diurnal)
 			{
-				if (std::abs(stat.getLat() <= 60))
+				if (std::abs(station.getLat() <= 60))
 					cout << "  ";
 				else
-					logfile << "Diurnal Cycle Check not run as CStation latitude" << stat.getLat()<< "  > 60 ";
+					logfile << "Diurnal Cycle Check not run as CStation latitude" << station.getLat()<< "  > 60 ";
 			}
 
 			//Write to file
 			if (first)
 			{
-				string filename = NETCDF_DATA_LOCS + (stat).getId() + "_internal.nc";
-				NETCDFUTILS::write(filename, stat, process_var, carry_thru_vars, match_to_compress);
+				string filename = NETCDF_DATA_LOCS + (station).getId() + "_internal.nc";
+				NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
 			}
 			else if (second)
 			{
-				string filename = NETCDF_DATA_LOCS + (stat).getId() + "_internal2.nc";
-				NETCDFUTILS::write(filename, stat, process_var, carry_thru_vars, match_to_compress);
+				string filename = NETCDF_DATA_LOCS + (station).getId() + "_internal2.nc";
+				NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
 			}
 			logfile << boost::gregorian::day_clock::local_day() << endl;
 			logfile << "processing took " << posix_time::second_clock::local_time() - process_start_time << "  s" << endl;

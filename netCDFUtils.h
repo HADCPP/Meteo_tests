@@ -12,9 +12,9 @@
 
 namespace
 {
-	std::string LOG_OUTFILE_LOCS = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\HADCPP\\duplicate_months\\Data\\Weather\\Data\\";
-	std::string NETCDF_DATA_LOCS = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\HADCPP\\duplicate_months\\Data\Weather\\NetCDF_files\\";
-	std::string CSV_OUTFILE_LOCS = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\Data\\Weather\\PEI 2015-2016H\\";
+	std::string LOG_OUTFILE_LOCS = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\HADCPP\\duplicate_months\\Data\\Log\\";
+	std::string NETCDF_DATA_LOCS = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\HADCPP\\duplicate_months\\Data\\NetCDF_files\\";
+	std::string CSV_OUTFILE_LOCS = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\Data\\PEI 2015-2016H\\";
 	
 	const int NBVAR=69; // recuperer la taille des données dans le fichier netCDF
 	

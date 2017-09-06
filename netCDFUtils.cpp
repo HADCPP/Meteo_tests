@@ -623,7 +623,7 @@ namespace NETCDFUTILS
 		NcDim reportingT_dim, reportingV_dim, reporting2_dim;
 		try
 		{
-			CMetVar* st_var = station.getMetvar(var_list[0]);
+			CMetVar *st_var = station.getMetvar(var_list[0]);
 			reportingT_dim = outfile.addDim("reporting_t", st_var->getReportingStats().size()); // N months
 			reportingV_dim = outfile.addDim("reporting_v", var_list.size());
 			reporting2_dim = outfile.addDim("reporting_2", 2); // accuracy and frequency
@@ -661,7 +661,7 @@ namespace NETCDFUTILS
 		full_var_list.push_back("input_station_id");
 		for (string var : full_var_list)
 		{
-			CMetVar* st_var = station.getMetvar(var);
+			CMetVar *st_var = station.getMetvar(var);
 			if (var == "input_station_id")
 				nc_var = outfile.addVar(st_var->getName(), ncString, dims);
 			else
@@ -726,8 +726,8 @@ namespace NETCDFUTILS
 				int v = 0;
 				for (string var : var_list)
 				{
-					CMetVar* st_var = station.getMetvar(var);
-					//flagged_obs[:, v] = st_var.flagged_obs
+					CMetVar *st_var = station.getMetvar(var);
+					//flagged_obs[:, v] = st_var->flagged_obs
 					nc_var = outfile.addVar("flagged_value", ncDouble, time_flag);
 					nc_var.putAtt("units", "1");
 					nc_var.putAtt("missing_value", "-1e30");
@@ -760,8 +760,8 @@ namespace NETCDFUTILS
 			
 			for (string var : var_list)
 			{
-				CMetVar* st_var = station.getMetvar(var);
-				//std::copy(begin(st_var.getReportingStats()), end(st_var.getReportingStats()), std::back_inserter(reporting_stats)) ;
+				CMetVar *st_var = station.getMetvar(var);
+				//std::copy(begin(st_var->getReportingStats()), end(st_var->getReportingStats()), std::back_inserter(reporting_stats)) ;
 				reporting_stats = reporting_stats + st_var->getReportingStats();
 			}
 			vector<NcDim> reporting_dims;

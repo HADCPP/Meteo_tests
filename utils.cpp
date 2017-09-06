@@ -75,14 +75,14 @@ namespace UTILS
 			return month_ranges;
 	}
 
-	valarray<bool> create_fulltimes(CStation* stat, vector<string> var_list, boost::gregorian::date start,boost::gregorian::date end, vector<string> opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
+	valarray<bool> create_fulltimes(CStation& station, vector<string> var_list, boost::gregorian::date start,boost::gregorian::date end, vector<string> opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
 	{
 		//expand the time axis of the variables
 		boost::gregorian::date_duration DaysBetween = end - start;
 		valarray<float> fulltimes;
 		
 		//adjust if input netCDF file has different start date to desired
-		string time_units = stat->getTime_units();
+		string time_units = station.getTime_units();
 		//Extraire la date de la chaîne
 		time_units = time_units.substr(time_units.find("since "));  
 		time_units = time_units.substr(time_units.find(" "));
@@ -93,8 +93,8 @@ namespace UTILS
 
 		valarray<bool> match, match_reverse;
 
-		match = PYTHON_FUNCTION::in1D<float, float>(fulltimes, stat->getMetvar("time")->getData());
-		match_reverse = PYTHON_FUNCTION::in1D<float, float>(stat->getMetvar("time")->getData(), fulltimes);
+		match = PYTHON_FUNCTION::in1D<float, float>(fulltimes, station.getMetvar("time")->getData());
+		match_reverse = PYTHON_FUNCTION::in1D<float, float>(station.getMetvar("time")->getData(), fulltimes);
 
 		//if optional/carry through variables given, then set to extract these too
 		vector<string> full_var_list;
@@ -110,7 +110,7 @@ namespace UTILS
 
 		for (vector<string>::iterator variable = final_var_list.begin(); variable != final_var_list.end(); variable++)
 		{
-			CMetVar* st_var = stat->getMetvar(*variable);
+			CMetVar* st_var = station.getMetvar(*variable);
 			//use masked arrays for ease of filtering later
 			
 			std::valarray<float> valmask(static_cast<float>(atof(st_var->getMdi().c_str())), fulltimes.size());
@@ -129,7 +129,7 @@ namespace UTILS
 				}	
 			}
 			
-			stat->getMetvar(*variable)->setMaskedData(valmask[mask_where]);
+			station.getMetvar(*variable)->setMaskedData(valmask[mask_where]);
 						
 			if (find(var_list.begin(), var_list.end(), *variable) != var_list.end() && do_flagged_obs == true)
 			{
@@ -149,7 +149,7 @@ namespace UTILS
 				{
 					v1 = st_var->getFlags()[match_reverse];
 					valmask = v1;
-					stat->getMetvar(*variable)->setFlags(valmask);
+					station.getMetvar(*variable)->setFlags(valmask);
 				}
 			}
 			
@@ -165,7 +165,7 @@ namespace UTILS
 		}
 		//working in fulltimes throughout and filter by missing
 		if (offset.days() != 0)	fulltimes = PYTHON_FUNCTION::arange<float>( DaysBetween.days() * 24, offset.days() * 24);
-		stat->getMetvar("time")->setData(fulltimes);
+		station.getMetvar("time")->setData(fulltimes);
 		return match;
 	}
 
@@ -198,11 +198,11 @@ namespace UTILS
 		: param file logfile : logfile to store outputs
 		: returns :
 		*/
-	void apply_flags_all_variables(CStation* stat,vector<string> full_variable_list, int flag_col,ofstream& logfile, string test)
+	void apply_flags_all_variables(CStation& station,vector<string> full_variable_list, int flag_col,ofstream& logfile, string test)
 	{
 
 	}
-	 void append_history(CStation* stat, string text)
+	 void append_history(CStation& station, string text)
 	{
 		time_t _time;
 		struct tm timeInfo;
@@ -210,15 +210,15 @@ namespace UTILS
 		time(&_time);
 		localtime_s(&timeInfo, &_time);
 		strftime(format, 32, "%Y-%m-%d %H-%M", &timeInfo);
-		stat->setHistory(stat->getHistory() + text + format);
+		station.setHistory(station.getHistory() + text + format);
 	}
 	/*
 		Return the data masked by the flags
 		Retourner un array où les valeurs qui correspondent aux indices 
-		où st_var.flags==1 sont masquées
+		où st_var->flags==1 sont masquées
 	*/
 
-	valarray<float> apply_filter_flags(CMetVar *st_var)
+	valarray<float> apply_filter_flags(CMetVar* st_var)
 	{
 		
 		return  PYTHON_FUNCTION::masked_values<float>(st_var->getData(),1);

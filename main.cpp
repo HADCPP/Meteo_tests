@@ -125,7 +125,7 @@ int main(int arg, char * argv)
 	//fichier d'entrée
 	
 	//char* file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\candidate_stations.txt";
-	string file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\HADCPP\\duplicate_months\\Data\\Weather\\PEI 2015-2016.HourlyHdr.csv";
+	string file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\HADCPP\\duplicate_months\\Data\\PEI 2015-2016.HourlyHdr.csv";
 			
 	vector<CStation> station_info;
 	//Obtenir la liste des stations

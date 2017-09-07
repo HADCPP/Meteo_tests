@@ -282,10 +282,6 @@ namespace UTILS
 			bincenters[i] = 0.5*(bins[i] + bins[i + 1]);
 	}
 
-	inline int idl_median(const valarray<int>& indata)
-	{
-		std::nth_element(std::begin(indata),std::begin(indata)+indata.size()/2, std::end(indata));
-		return indata[indata.size() / 2];
-	}
+	
 
 }

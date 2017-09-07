@@ -47,5 +47,11 @@ namespace UTILS
 	*/
 	float reporting_accuracy(std::valarray<float> good_values, bool winddir = false);
 	void create_bins(std::valarray<float> indata, float binwidth, std::valarray<float> &bins, std::valarray<float>  &bincenters);
-	inline int idl_median(const std::valarray<int>& indata);
+
+	template<typename T>
+	inline T idl_median(std::valarray<T> indata)
+	{
+		std::nth_element(std::begin(indata), std::begin(indata) + indata.size() / 2, std::end(indata));
+		return indata[indata.size() / 2];
+	}
 }

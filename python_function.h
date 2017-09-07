@@ -201,11 +201,16 @@ namespace PYTHON_FUNCTION
 	inline int np_argmin(const std::valarray<float>& val)
 	{
 		float min = val.min();
-		
+		int j = 0;
 		for (int i = 0; i < val.size();i++)
 		{
-			if (val[i] == min) return i;
+			if (val[i] == min)
+			{
+				j = i;
+				break;
+			}
 		}
+		return j;
 	}
 	
 }

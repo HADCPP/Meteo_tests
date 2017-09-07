@@ -1,3 +1,4 @@
+#pragma once
 #include "CStation.h"
 #include "vector"
 #include "string"
@@ -5,6 +6,7 @@
 #include <valarray>
 #include <boost/math/constants/constants.hpp>
 #include "python_function.h"
+
 namespace
 {
 	const int OBS_PER_DAY = 4;
@@ -29,7 +31,7 @@ namespace DIURNAL
 	//Return sine curve over 24 points
 	inline std::valarray<float> dcc_make_sine()
 	{
-		std::valarray<float> val_sin = PYTHON_FUNCTION::arange<float>(HOURS);
+		std::valarray<float> val_sin = PYTHON_FUNCTION::arange<float>(float(HOURS));
 		val_sin /= 24;
 		return val_sin = val_sin.apply(MyApplySinus);
 	}

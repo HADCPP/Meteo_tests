@@ -127,7 +127,8 @@ namespace DIURNAL
 				valarray<size_t> locs = PYTHON_FUNCTION::npwhere<int>(diurnal_uncertainties, h + 1,'=');
 				if (locs.size() > 300)
 				{
-					best_fits[h] = UTILS::idl_median(diurnal_best_fits[locs]);
+					valarray<int> fits=diurnal_best_fits[locs];
+					best_fits[h] = UTILS::idl_median(fits);
 				}
 			}
 			//Build up range of cycles incl, uncertainty to find where best of best located
@@ -280,7 +281,27 @@ namespace DIURNAL
 				}
 				
 				cout << "currently matches IDL, but should all hours in days have flags set, not just the missing/flagged ones?" << endl;
-				
+				// Partie à implementer apres avoir définie la structure de station.qc_flags
+				/*
+				diurnal_flags += [dcc_flags]
+				else:
+				diurnal_flags += [np.zeros(filtered_data.shape)]
+
+				station.qc_flags[:, flag_col[v]] = np.array(diurnal_flags).reshape(-1)
+
+				flag_locs = np.where(station.qc_flags[:, flag_col[v]] != 0)
+				if plots or diagnostics:
+				utils.print_flagged_obs_number(logfile, "Diurnal Cycle", variable, len(flag_locs[0]), noWrite = True)
+				else:
+				utils.print_flagged_obs_number(logfile, "Diurnal Cycle", variable, len(flag_locs[0]))
+
+				# copy flags into attribute
+				st_var.flags[flag_locs] = 1
+
+				# CHECKED 030660-99999, 30-06-2014, 855 flagged RJHD
+				*/
+				UTILS::apply_flags_all_variables(station, full_variable_list, 0, logfile, "Diurnal Cycle");
+				UTILS::append_history(station, "Diurnal Cycle Check");
 			}
 		}
 	}

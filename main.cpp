@@ -122,6 +122,9 @@ void ncdf(vector<CStation> station_info)
 
 int main(int arg, char * argv)
 {
+
+
+	//faire un changement
 	//fichier d'entrée
 	
 	//char* file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\candidate_stations.txt";

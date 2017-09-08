@@ -104,27 +104,29 @@ public:
 		CStation();
 		CStation(std::string id, std::string name, double lat, double lon, double elev, std::string wmo);
 		virtual ~CStation();
-		std::string toString();
-		std::string getId();
-		std::string getName();
-		std::string getWmoId();
-		void setQc_flags(std::valarray<std::valarray<float>> qc_flags);
-		/* Remplir qc_flag correpondant à la variable qui se trouve à la position colonne
-		*/
-		void setQc_flags(std::valarray<float> qc_flags,std::slice indices,int index);
-		std::valarray<std::valarray<float>> getQc_flags();
-		void setMetVar(CMetVar metvar, std::string var);
-		CMetVar* getMetvar(std::string var);
-		void setTime_units(std::string units);
-		void setTime_data(std::vector<int> data);
-		std::string getTime_units();
-		std::vector<int> getTime_data();
-		void setHistory(std::string history);
-		std::string getHistory();
-		double getLat();
-		double getLon();
-		double getElev();
+
 		
+		double getLat()const{ return m_lat; }
+		double getLon()const{ return m_lon; }
+		double getElev()const{ return m_elev; }
+		const std::string& getId()const{ return m_id; }
+		const std::string& getName()const{ return m_name; }
+		const std::string& getWmoId()const{ return m_wmoid; }
+		// Remplir qc_flag correpondant à la variable qui se trouve à la position colonne
+		void setQc_flags(std::valarray<std::valarray<float>> qc_flags){ m_qc_flags = qc_flags; }
+		void setQc_flags(std::valarray<float> qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
+		const std::valarray<std::valarray<float>>& getQc_flags()const{ return m_qc_flags; }
+		void setMetVar(CMetVar metvar, std::string var){ (m_Met_var)[var] = metvar; }
+		CMetVar& getMetvar(std::string var){ return m_Met_var[var]; }
+		void setTime_units(std::string units){ m_time.units = units; }
+		void setTime_data(std::vector<int> data){ copy(data.begin(), data.end(), std::back_inserter(m_time.data)); }
+		std::string getTime_units()const{ return m_time.units; }
+		const std::vector<int>& getTime_data()const{ return m_time.data; }
+		void setHistory(std::string history){ m_history = history; }
+		const std::string& getHistory()const{ return m_history; }
+
+
+		std::string toString();
 		
 
 protected:

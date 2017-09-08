@@ -1,23 +1,23 @@
-#include"Internal_checks.h"
-#include<vector>
+#include "Internal_checks.h"
+#include <vector>
 #include <ctime>
-#include "CStation.h"
-#include<sstream>
-#include<iostream>
+#include "station.h"
+#include <sstream>
+#include <iostream>
 #include <string>
-#include<fstream>
+#include <fstream>
 #include "netCDFUtils.h"
 #include "netcdf.h"
 #include "ncFile.h"
 #include "ncDim.h"
 #include "ncVar.h"
-#include<errno.h>
-#include<exception>
+#include <errno.h>
+#include <exception>
 #include <cmath>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include<boost/filesystem.hpp>
-#include<boost/chrono.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/chrono.hpp>
 #include "duplicate_months.h"
 #include "utils.h"
 #include "frequent_values.h"
@@ -101,15 +101,13 @@ namespace INTERNAL_CHECKS
 				NETCDFUTILS::read(filename,station,process_var,carry_thru_vars);
 				
 				//lire dans le fichier netcdf
-				logfile << "Total CStation record size" << station.getMetvar("time")->getData().size() << endl;
-
+				logfile << "Total CStation record size" << station.getMetvar("time").getData().size() << endl;
 				match_to_compress = UTILS::create_fulltimes(station,process_var, DATESTART, DATEEND, carry_thru_vars);
 
 				//Initialiser CStation.qc_flags
 				for (string var : process_var)
 				{
-					CMetVar *st_var = station.getMetvar(var);
-					//st_var->setReportingStats(/*utils.monthly_reporting_statistics(st_var, DATASTART, DATAEND)*/);
+					CMetVar& st_var = station.getMetvar(var);
 				}
 			}
 			else if (second)
@@ -124,6 +122,7 @@ namespace INTERNAL_CHECKS
 				{
 					cout << e.what() << endl;
 				}
+
 				NETCDFUTILS::read(filename, station, process_var, carry_thru_vars);
 				match_to_compress = UTILS::create_fulltimes(station, process_var, DATESTART, DATEEND, carry_thru_vars);
 			}
@@ -148,6 +147,7 @@ namespace INTERNAL_CHECKS
 				flag_col.push_back(3);
 				flag_col.push_back(2);
 				flag_col.push_back(1);*/
+
 				FREQUENT_VALUES::fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
 			}
 			if (mytest.diurnal)

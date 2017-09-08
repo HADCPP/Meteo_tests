@@ -1,21 +1,21 @@
 #include "netCDFUtils.h"
 #include <string>
-#include<iostream>
-#include<sstream>
-#include<fstream>
+#include <iostream>
+#include <sstream>
+#include <fstream>
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/tokenizer.hpp>
-#include<boost/filesystem.hpp>
-#include<boost/format.hpp>
-#include<ctime>
-#include<iterator>
+#include <boost/filesystem.hpp>
+#include <boost/format.hpp>
+#include <ctime>
+#include <iterator>
 #include "netcdf.h"
 #include "ncFile.h"
 #include "ncDim.h"
 #include "ncVar.h"
 #include <vector>
-#include "CStation.h"
+#include "station.h"
 #include <zlib.h>
 #include <cstring>
 #include <boost/filesystem.hpp>
@@ -523,7 +523,7 @@ namespace NETCDFUTILS
 						cout << "no QC flags available" << endl;
 					else
 					{
-						const int ligne = station.getMetvar("time")->getData().size();
+						const int ligne = station.getMetvar("time").getData().size();
 						float **qcflags = 0;
 						qcflags = new float*[ligne];
 						for (size_t i = 0; i < ligne; i++)
@@ -544,12 +544,12 @@ namespace NETCDFUTILS
 					cout << "no flagged obs available in netcdf file " << endl;
 				else // if doesn't exist, make an empty array 
 				{
-					const int ligne = station.getMetvar("time")->getData().size();
+					const int ligne = station.getMetvar("time").getData().size();
 					for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); var++)
 					{
-						valarray<float> flaggedobs(static_cast<float>(atoi(station.getMetvar(*var)->getMdi().c_str())), ligne);
+						valarray<float> flaggedobs(static_cast<float>(atoi(station.getMetvar(*var).getMdi().c_str())), ligne);
 						//push array into relevant attribute
-						station.getMetvar(*var)->setFlagged_obs(flaggedobs);
+						station.getMetvar(*var).setFlagged_obs(flaggedobs);
 					}
 				}
 			}
@@ -567,7 +567,7 @@ namespace NETCDFUTILS
 				for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); ++var,v++)
 				{
 					valarray<float> report(reporting[v]);
-					station.getMetvar(*var)->setReportingStats(report);
+					station.getMetvar(*var).setReportingStats(report);
 				}
 				delete[] reporting;
 			}
@@ -623,8 +623,8 @@ namespace NETCDFUTILS
 		NcDim reportingT_dim, reportingV_dim, reporting2_dim;
 		try
 		{
-			CMetVar *st_var = station.getMetvar(var_list[0]);
-			reportingT_dim = outfile.addDim("reporting_t", st_var->getReportingStats().size()); // N months
+			CMetVar &st_var = station.getMetvar(var_list[0]);
+			reportingT_dim = outfile.addDim("reporting_t", st_var.getReportingStats().size()); // N months
 			reportingV_dim = outfile.addDim("reporting_v", var_list.size());
 			reporting2_dim = outfile.addDim("reporting_2", 2); // accuracy and frequency
 		}
@@ -661,30 +661,30 @@ namespace NETCDFUTILS
 		full_var_list.push_back("input_station_id");
 		for (string var : full_var_list)
 		{
-			CMetVar *st_var = station.getMetvar(var);
+			CMetVar &st_var = station.getMetvar(var);
 			if (var == "input_station_id")
-				nc_var = outfile.addVar(st_var->getName(), ncString, dims);
+				nc_var = outfile.addVar(st_var.getName(), ncString, dims);
 			else
 			{
 				if (var == "time")
-					nc_var = outfile.addVar(st_var->getName(), ncDouble, time_dim);
-				else nc_var = outfile.addVar(st_var->getName(), ncDouble, time_dim);
+					nc_var = outfile.addVar(st_var.getName(), ncDouble, time_dim);
+				else nc_var = outfile.addVar(st_var.getName(), ncDouble, time_dim);
 			}
 			nc_var.setCompression(false, true, 9);
-			nc_var.putAtt("long_name", st_var->getLong_Name());
-			nc_var.putAtt("standard_name", st_var->getStandardname());
-			nc_var.putAtt("units", st_var->getUnits());
-			nc_var.putAtt("missing_value", st_var->getMdi());
-			nc_var.putAtt("flagged_value", to_string(st_var->getFdi()));
-			nc_var.putAtt("valid_min", st_var->getValidMin());
-			nc_var.putAtt("valid_max", st_var->getValidMax());
-			nc_var.putAtt("coordinates", st_var->getCoordinates());
-			nc_var.putAtt("cell_methods", st_var->getCellmethods());
+			nc_var.putAtt("long_name", st_var.getLong_Name());
+			nc_var.putAtt("standard_name", st_var.getStandardname());
+			nc_var.putAtt("units", st_var.getUnits());
+			nc_var.putAtt("missing_value", st_var.getMdi());
+			nc_var.putAtt("flagged_value", to_string(st_var.getFdi()));
+			nc_var.putAtt("valid_min", st_var.getValidMin());
+			nc_var.putAtt("valid_max", st_var.getValidMax());
+			nc_var.putAtt("coordinates", st_var.getCoordinates());
+			nc_var.putAtt("cell_methods", st_var.getCellmethods());
 
 			//extra attributes
 			// have to expand string array out into individual characters if appropriate
 			if (var == "time")
-				nc_var.putAtt("calendar", st_var->getCalendar());
+				nc_var.putAtt("calendar", st_var.getCalendar());
 			nc_var.putAtt("end_month", "12");
 		}
 		//write QC flag information if available
@@ -726,7 +726,7 @@ namespace NETCDFUTILS
 				int v = 0;
 				for (string var : var_list)
 				{
-					CMetVar *st_var = station.getMetvar(var);
+					CMetVar &st_var = station.getMetvar(var);
 					//flagged_obs[:, v] = st_var->flagged_obs
 					nc_var = outfile.addVar("flagged_value", ncDouble, time_flag);
 					nc_var.putAtt("units", "1");
@@ -760,9 +760,9 @@ namespace NETCDFUTILS
 			
 			for (string var : var_list)
 			{
-				CMetVar *st_var = station.getMetvar(var);
+				CMetVar &st_var = station.getMetvar(var);
 				//std::copy(begin(st_var->getReportingStats()), end(st_var->getReportingStats()), std::back_inserter(reporting_stats)) ;
-				reporting_stats = reporting_stats + st_var->getReportingStats();
+				reporting_stats = reporting_stats + st_var.getReportingStats();
 			}
 			vector<NcDim> reporting_dims;
 			reporting_dims.push_back(reportingV_dim);

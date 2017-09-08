@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
-#include "CStation.h"
+#include "station.h"
 #include <vector>
 #include <boost/date_time/gregorian/gregorian.hpp>
-#include <iostream>
+#include<iostream>
 namespace
 {
 	const std::string SEASONS[5] = { "Ann", "MAM", "JJA", "SON", "D+JF" };
@@ -18,6 +18,6 @@ namespace FREQUENT_VALUES
 		: param datetime end : datetime object of end of data
 		: param file logfile : logfile to store outputs
 	*/ 
-	void  fvc(CStation &stat, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date end, std::ofstream &logfile);
+	void  fvc(CStation& stat, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date end, std::ofstream &logfile);
 	
 }

@@ -1,7 +1,7 @@
 #pragma once
-#include<vector>
-#include "CStation.h"
-#include<string>
+#include <vector>
+#include "station.h"
+#include <string>
 
 
 struct test

@@ -4,8 +4,8 @@
 #include "ncFile.h"
 #include "ncDim.h"
 #include "ncVar.h"
-#include<vector>
-#include "CStation.h"
+#include <vector>
+#include "station.h"
 #include <typeinfo.h>
 #define INTMDI  +9999
 #define FLTMDI  -999

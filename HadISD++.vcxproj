@@ -104,8 +104,8 @@
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>D:\Logiciel\Anaconda3\libs;D:\Logiciel\Anaconda3\Library;D:\Logiciel\Anaconda3\Lib;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\zlib;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\lib64;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\netCDF\lib64;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\netCDF\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>netcdf.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\project\external\netCDF\lib64;..\project\external\lib$(PlatformArchitecture);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>netcdfLib_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
       <UseLibraryDependencyInputs>true</UseLibraryDependencyInputs>
@@ -142,7 +142,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalLibraryDirectories>D:\Logiciel\Anaconda3\libs;D:\Logiciel\Anaconda3\Library;D:\Logiciel\Anaconda3\Lib;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\zlib;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\lib64;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\netCDF\lib64;C:\Users\oali\Documents\Visual Studio 2013\Projects\external\netCDF\bin;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\project\external\netCDF\lib64;..\project\external\lib$(PlatformArchitecture);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>netcdf.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ProjectReference>
@@ -150,11 +150,14 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="distributional_gap.cpp" />
+    <ClCompile Include="distributional_gap.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="duplicate_months.cpp" />
     <ClCompile Include="frequent_values.cpp" />
     <ClCompile Include="Internal_checks.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="netCDFUtils.cpp" />
     <ClCompile Include="station.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>

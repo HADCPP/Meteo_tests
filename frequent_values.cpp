@@ -1,6 +1,6 @@
 #include "frequent_values.h"
 #include "utils.h"
-#include "CStation.h"
+#include "station.h"
 #include "python_function.h"
 
 using namespace std;
@@ -8,7 +8,7 @@ using namespace UTILS;
 
 namespace FREQUENT_VALUES
 {
-	void  fvc(CStation &station, std::vector<std::string> variable_list, std::vector<int>  flag_col, boost::gregorian::date start, boost::gregorian::date end, std::ofstream &logfile)
+	void  fvc(CStation& stat, std::vector<std::string> variable_list, std::vector<int>  flag_col, boost::gregorian::date start, boost::gregorian::date end, std::ofstream &logfile)
 	{
 
 		const int MIN_DATA_REQUIRED = 500;// to create histogram for complete record
@@ -18,6 +18,7 @@ namespace FREQUENT_VALUES
 		vector<vector<pair<int, int>>> month_ranges_years;
 		int iteration = 1;
 		vector<pair<int, int>> month;
+		int index = 0;
 		for (map<int, int>::iterator month_it = month_ranges.begin(); month_it != month_ranges.end(); month_it++)
 		{
 			if (iteration <= 12)
@@ -28,6 +29,7 @@ namespace FREQUENT_VALUES
 			else
 			{
 				month_ranges_years.push_back(month);
+				index++;
 				month.clear();
 				month.push_back(make_pair(month_it->first, month_it->second));
 				iteration = 2;
@@ -39,7 +41,7 @@ namespace FREQUENT_VALUES
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			CMetVar  *st_var = station.getMetvar(variable);
+			CMetVar & st_var = stat.getMetvar(variable);
 			valarray<float> filtered_data = apply_filter_flags(st_var);
 			float  reporting_accuracy = UTILS::reporting_accuracy(filtered_data);
 
@@ -51,7 +53,7 @@ namespace FREQUENT_VALUES
 				if (season == 0)
 				{
 					//all year
-					season_data = PYTHON_FUNCTION::masked_values<float>(filtered_data, st_var->getFdi());
+					season_data = PYTHON_FUNCTION::masked_values<float>(filtered_data, st_var.getFdi());
 					thresholds[0] = 30;
 					thresholds[1] = 20;
 					thresholds[2] = 10;
@@ -70,30 +72,30 @@ namespace FREQUENT_VALUES
 						if (season == 1) // mars,avril,may
 						{
 							valarray<float> new_filtered_data= filtered_data[std::slice((*year)[2].first,6,1)];
-							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var->getFdi());
+							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							//std::copy(std::begin(new_filtered_data), std::end(new_filtered_data), std::end(season_data));
 							season_data = season_data + new_filtered_data; //fonction pour concatener 
 						}
 						else if (season == 2) //june, july, august
 						{
 							valarray<float> new_filtered_data = filtered_data[std::slice((*year)[5].first, 6, 1)];
-							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var->getFdi());
+							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data,new_filtered_data);
 							
 						}
 						else if (season == 3) // september,october,november
 						{
 							valarray<float> new_filtered_data = filtered_data[std::slice((*year)[8].first, 6, 1)];
-							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var->getFdi());
+							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data, new_filtered_data);
 						}
 						else //december + january,februay
 						{
 							valarray<float> new_filtered_data = filtered_data[std::slice((*year)[0].first, 4, 1)];
-							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var->getFdi());
+							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data, new_filtered_data);
 							new_filtered_data = filtered_data[std::slice((*year)[11].first, 2, 1)];
-							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var->getFdi());
+							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data, new_filtered_data);
 						}
 					}
@@ -139,44 +141,44 @@ namespace FREQUENT_VALUES
 						
 						if (season == 0)
 						{
-							year_data= st_var->getData()[std::slice((*year)[0].first, 24, 1)];
-							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var->getFdi());
-							year_flags = station.getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 24, 1)];
+							year_data= st_var.getData()[std::slice((*year)[0].first, 24, 1)];
+							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var.getFdi());
+							year_flags = stat.getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 24, 1)];
 						}
 						if (season == 1) // mars,avril,may
 						{
-							year_data = st_var->getData()[std::slice((*year)[2].first, 6, 1)];
-							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var->getFdi());
-							year_flags = station.getQc_flags()[flag_col[v]][std::slice((*year)[2].first, 6, 1)];
+							year_data = st_var.getData()[std::slice((*year)[2].first, 6, 1)];
+							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var.getFdi());
+							year_flags = stat.getQc_flags()[flag_col[v]][std::slice((*year)[2].first, 6, 1)];
 						}
 						else if (season == 2) //june, july, august
 						{
 
-							year_data = st_var->getData()[std::slice((*year)[5].first, 6, 1)];
-							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var->getFdi());
-							year_flags = station.getQc_flags()[flag_col[v]][std::slice((*year)[5].first, 6, 1)];
+							year_data = st_var.getData()[std::slice((*year)[5].first, 6, 1)];
+							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var.getFdi());
+							year_flags = stat.getQc_flags()[flag_col[v]][std::slice((*year)[5].first, 6, 1)];
 						}
 						else if (season == 3) // september,october,november
 						{
 
-							year_data = st_var->getData()[std::slice((*year)[8].first, 6, 1)];
-							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var->getFdi());
-							year_flags = station.getQc_flags()[flag_col[v]][std::slice((*year)[8].first, 6, 1)];
+							year_data = st_var.getData()[std::slice((*year)[8].first, 6, 1)];
+							year_data = PYTHON_FUNCTION::masked_values(year_data, st_var.getFdi());
+							year_flags = stat.getQc_flags()[flag_col[v]][std::slice((*year)[8].first, 6, 1)];
 						}
 						else if(season==4)//december + january,februay
 						{
 							valarray<float> new_filtered_data = filtered_data[std::slice((*year)[0].first, 4, 1)];
-							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var->getFdi());
+							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 
 							year_data = new_filtered_data;
 
 							new_filtered_data = filtered_data[std::slice((*year)[11].first, 2, 1)];
-							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var->getFdi());
+							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 
 							PYTHON_FUNCTION::concatenate(year_data, new_filtered_data);
 
-							year_flags = station.getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 4, 1)];
-							new_filtered_data = station.getQc_flags()[flag_col[v]][std::slice((*year)[11].first, 2, 1)];
+							year_flags = stat.getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 4, 1)];
+							new_filtered_data = stat.getQc_flags()[flag_col[v]][std::slice((*year)[11].first, 2, 1)];
 							PYTHON_FUNCTION::concatenate(year_flags, new_filtered_data);
 							
 							
@@ -220,27 +222,27 @@ namespace FREQUENT_VALUES
 					}
 					//copy flags back
 					if (season == 0)
-						station.setQc_flags(year_flags, std::slice((*year)[0].first, 24, 1), v);
+						stat.setQc_flags(year_flags, std::slice((*year)[0].first, 24, 1), v);
 					else if (season==1)
-						station.setQc_flags(year_flags, std::slice((*year)[2].first, 6, 1), v);
+						stat.setQc_flags(year_flags, std::slice((*year)[2].first, 6, 1), v);
 					else if (season==2)
-						station.setQc_flags(year_flags, std::slice((*year)[5].first, 6, 1), v);
+						stat.setQc_flags(year_flags, std::slice((*year)[5].first, 6, 1), v);
 					else if (season==3)
-						station.setQc_flags(year_flags, std::slice((*year)[8].first, 6, 1), v);
+						stat.setQc_flags(year_flags, std::slice((*year)[8].first, 6, 1), v);
 					else if (season == 4)
 					{
-						int split = (station.getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 4, 1)]).size();
-						station.setQc_flags(year_flags[std::slice(0,split+1,1)], std::slice((*year)[0].first, 4, 1), v);
-						station.setQc_flags(year_flags[std::slice(split, year_flags.size()-split+1, 1)], std::slice((*year)[11].first, 2, 1), v);
+						int split = (stat.getQc_flags()[flag_col[v]][std::slice((*year)[0].first, 4, 1)]).size();
+						stat.setQc_flags(year_flags[std::slice(0,split+1,1)], std::slice((*year)[0].first, 4, 1), v);
+						stat.setQc_flags(year_flags[std::slice(split, year_flags.size()-split+1, 1)], std::slice((*year)[11].first, 2, 1), v);
 					}
 				}
 			}
 			v++;
-			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], 0,'!');
+			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(stat.getQc_flags()[flag_col[v]], 0, ' ');//RSA: quele est la condition a mettre ici???
 			UTILS::print_flagged_obs_number(logfile, "Frequent value", variable, flag_locs.size());
 			//copy flags into attribute
-			st_var->setFlags(flag_locs, 1);
-			UTILS::append_history(station, "Frequent values Check");
+			st_var.setFlags(flag_locs, 1);
+			UTILS::append_history(stat, "Frequent values Check");
 		}
 	}
 	

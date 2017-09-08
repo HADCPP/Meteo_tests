@@ -1,5 +1,5 @@
 
-#include"CStation.h"
+#include "station.h"
 #include <vector>
 #include <string>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -47,7 +47,7 @@ namespace DUPLICATE_MONTHS
 	*/
 
 	inline void duplication_test(valarray<float> source_data, valarray<float> target_data, vector<int>valid, int sm, int tm,
-		map<int, int>::iterator source_month, map<int, int>::iterator  target_month, vector<int> &duplicated,CStation station,int flag_col)
+		map<int, int>::iterator source_month, map<int, int>::iterator  target_month, vector<int> &duplicated,CStation stat,int flag_col)
 	{
 		is_month_duplicated(source_data, target_data, valid, sm, tm, duplicated);
 
@@ -66,7 +66,7 @@ namespace DUPLICATE_MONTHS
 	:param file logfile: logfile to store outputs
 
 	*/
-	void dmc(CStation &station, std::vector<std::string> variable_list, std::vector<std::string> full_variable_list,
+	void dmc(CStation stat, std::vector<std::string> variable_list, std::vector<std::string> full_variable_list,
 		int flag_col, boost::gregorian::date start, boost::gregorian::date end, ofstream &logfile)
 	{
 		const  int MIN_DATA_REQUIRED = 20;
@@ -77,7 +77,7 @@ namespace DUPLICATE_MONTHS
 		int v = 0;
 		for (string variable: variable_list)
 		{
-			CMetVar *st_var = station.getMetvar(variable); //Recuperer la variable meteo de la CStation
+			CMetVar & st_var = stat.getMetvar(variable); //Recuperer la variable meteo de la CStation
 			vector<int> duplicated;
 			int sm = 0;
 			for (map<int, int>::iterator source_month = month_ranges.begin(); source_month != month_ranges.end(); ++source_month)
@@ -86,7 +86,7 @@ namespace DUPLICATE_MONTHS
 				int taille_slice = source_month->second - source_month->first+1;
 				valarray<float> source_data(taille_slice);
 				
-				source_data = st_var->getData()[slice(source_month->first, taille_slice, 1)];
+				source_data = st_var.getData()[slice(source_month->first, taille_slice, 1)];
 				if (duplicated[sm] == 0)   // don't repeat if already a duplicated
 				{
 					int tm = 0;
@@ -95,23 +95,23 @@ namespace DUPLICATE_MONTHS
 						if (target_month == source_month) continue;
 						valarray<float> target_data;
 						int taille_slice = target_month->second - target_month->first + 1;
-						target_data = st_var->getData()[slice(target_month->first, taille_slice, 1)];
+						target_data = st_var.getData()[slice(target_month->first, taille_slice, 1)];
 						tm++;
 						//match the data periods
-						int overlap = std::min(source_data.size(), target_data.size());
+						size_t overlap = std::min(source_data.size(), target_data.size());
 						valarray<float> s_data, t_data;
 						s_data = source_data[slice(0,overlap,1)];
 						t_data = source_data[slice(0,overlap,1)];
 						vector<int> s_valid, t_valid;
-						s_valid = PYTHON_FUNCTION::np_where_vec<float>(s_data, st_var->getFdi());
-						t_valid = PYTHON_FUNCTION::np_where_vec<float>(t_data, st_var->getFdi());
+						s_valid = PYTHON_FUNCTION::np_where_vec<float>(s_data, st_var.getFdi());
+						t_valid = PYTHON_FUNCTION::np_where_vec<float>(t_data, st_var.getFdi());
 						//if enough of an overlap
 						if (s_valid.size() >= MIN_DATA_REQUIRED && t_valid.size() >= MIN_DATA_REQUIRED)
 						{
 							if (s_valid.size() < t_valid.size())
-								duplication_test(source_data, target_data, s_valid, sm, tm, source_month, target_month, duplicated, station, flag_col);
+								duplication_test(source_data, target_data, s_valid, sm, tm, source_month, target_month, duplicated, stat, flag_col);
 							else //swap the list of valid points 
-								duplication_test(source_data, target_data, t_valid, sm, tm, source_month, target_month, duplicated, station, flag_col);
+								duplication_test(source_data, target_data, t_valid, sm, tm, source_month, target_month, duplicated, stat, flag_col);
 						}
 						tm++;
 					}//target month
@@ -122,7 +122,7 @@ namespace DUPLICATE_MONTHS
 
 		}//variable list
 
-		UTILS::apply_flags_all_variables(station, full_variable_list, 0, logfile, "Duplicate Months check");
+		UTILS::apply_flags_all_variables(stat, full_variable_list, 0, logfile, "Duplicate Months check");
 
 	}
 

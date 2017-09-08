@@ -36,6 +36,9 @@
     <ClCompile Include="distributional_gap.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="netCDFUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="duplicate_months.h">

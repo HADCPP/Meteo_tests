@@ -41,12 +41,12 @@ namespace UTILS
 		return indata[indata.size() / 2];
 	}
 	template<typename T, typename S>
-	inline T Cast(S data)
+	inline T Cast(const S &data)
 	{
 		return static_cast<T>(data);
 	}
 	template<typename T>
-	inline T Cast(std::string data)
+	inline T Cast(const std::string &data)
 	{
 		string s = typeid(T).name();
 		if (s == "int")

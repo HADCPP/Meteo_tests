@@ -113,9 +113,9 @@ public:
 		const std::string& getName()const{ return m_name; }
 		const std::string& getWmoId()const{ return m_wmoid; }
 		// Remplir qc_flag correpondant à la variable qui se trouve à la position colonne
-		void setQc_flags(std::valarray<std::valarray<float>> qc_flags){ m_qc_flags = qc_flags; }
+		void setQc_flags(std::valarray<float> qc_flags,int v){ m_qc_flags[v] = qc_flags; }
 		void setQc_flags(std::valarray<float> qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
-		const std::valarray<std::valarray<float>>& getQc_flags()const{ return m_qc_flags; }
+		const std::vector<std::valarray<float>>& getQc_flags()const{ return m_qc_flags; }
 		void setMetVar(CMetVar metvar, std::string var){ (m_Met_var)[var] = metvar; }
 		CMetVar& getMetvar(std::string var){ return m_Met_var[var]; }
 		void setTime_units(std::string units){ m_time.units = units; }
@@ -137,7 +137,7 @@ protected:
 	double m_lat;
 	double m_lon;
 	double m_elev;
-	std::valarray<std::valarray<float>> m_qc_flags;
+	std::vector<std::valarray<float>> m_qc_flags;
 	std::map<std::string, CMetVar >  m_Met_var;
 	s_time m_time;
 	std::string m_history;

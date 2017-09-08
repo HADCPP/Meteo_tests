@@ -152,12 +152,15 @@
   <ItemGroup>
     <ClCompile Include="distributional_gap.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Diurnal_cycle.cpp" />
     <ClCompile Include="duplicate_months.cpp" />
     <ClCompile Include="frequent_values.cpp" />
     <ClCompile Include="Internal_checks.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="netCDFUtils.cpp" />
+    <ClCompile Include="odd_cluster.cpp" />
     <ClCompile Include="station.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
@@ -166,6 +169,7 @@
     <ClInclude Include="duplicate_months.h" />
     <ClInclude Include="frequent_values.h" />
     <ClInclude Include="Internal_checks.h" />
+    <ClInclude Include="odd_cluster.h" />
     <ClInclude Include="python_function.h" />
     <ClInclude Include="station.h" />
     <ClInclude Include="stdafx.h" />

@@ -220,7 +220,8 @@ namespace UTILS
 
 	valarray<float> apply_filter_flags(CMetVar &st_var)
 	{
-		
+		valarray<float> dummy = st_var.getData();
+		dummy[dummy == float(1)] = 777;
 		return  PYTHON_FUNCTION::masked_values<float>(st_var.getData(),1);
 	}
 

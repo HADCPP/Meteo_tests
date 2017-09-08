@@ -1,5 +1,5 @@
 #pragma once
-#include "CStation.h"
+#include "station.h"
 #include "vector"
 #include "string"
 #include <iostream>

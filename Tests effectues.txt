@@ -1,0 +1,13 @@
+duplicate    ousmane
+odd  		 ousmane
+frequent  	 ousmane
+diurnal  	 ousmane
+gap          Remi
+records  
+streaks  
+climatological  
+spike  
+humidity  
+cloud  
+variance  
+winds  

@@ -39,7 +39,7 @@ namespace DIURNAL
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			CMetVar *st_var = station.getMetvar(variable);
+			CMetVar &st_var = station.getMetvar(variable);
 			valarray<float> filtered_data = UTILS::apply_filter_flags(st_var);
 			vector<valarray<float>> v_filtered_data;
 			int iteration = 1;

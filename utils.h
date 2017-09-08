@@ -33,4 +33,29 @@ namespace UTILS
 	*/
 	float reporting_accuracy(std::valarray<float> good_values, bool winddir = false);
 	void create_bins(std::valarray<float> indata, float binwidth, std::valarray<float> &bins, std::valarray<float>  &bincenters);
+
+	template<typename T>
+	inline T idl_median(std::valarray<T> indata)
+	{
+		std::nth_element(std::begin(indata), std::begin(indata) + indata.size() / 2, std::end(indata));
+		return indata[indata.size() / 2];
+	}
+	template<typename T, typename S>
+	inline T Cast(S data)
+	{
+		return static_cast<T>(data);
+	}
+	template<typename T>
+	inline T Cast(std::string data)
+	{
+		string s = typeid(T).name();
+		if (s == "int")
+			return static_cast<T>(std::atoi(data.c_str()));
+
+		if (s == "float")
+			return static_cast<T>(std::atof(data.c_str()));
+
+
+	}
+
 }

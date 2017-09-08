@@ -18,7 +18,6 @@ namespace FREQUENT_VALUES
 		vector<vector<pair<int, int>>> month_ranges_years;
 		int iteration = 1;
 		vector<pair<int, int>> month;
-		int index = 0;
 		for (map<int, int>::iterator month_it = month_ranges.begin(); month_it != month_ranges.end(); month_it++)
 		{
 			if (iteration <= 12)
@@ -29,7 +28,6 @@ namespace FREQUENT_VALUES
 			else
 			{
 				month_ranges_years.push_back(month);
-				index++;
 				month.clear();
 				month.push_back(make_pair(month_it->first, month_it->second));
 				iteration = 2;

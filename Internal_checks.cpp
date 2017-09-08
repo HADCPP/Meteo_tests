@@ -129,7 +129,7 @@ namespace INTERNAL_CHECKS
 			if (mytest.duplicate) //check on temperature ONLY
 			{
 				//Appel à la fonction duplicate_months de qc_tests
-				vector<string> variable_list = { "temperature" };
+				vector<string> variable_list = { "temperatures" };
 				
 				DUPLICATE_MONTHS::dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile);
 			}

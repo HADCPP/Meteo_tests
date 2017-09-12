@@ -7,6 +7,8 @@
 #include <valarray>
 #include <vector>
 #include <string>
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
 
 class COddCluster
 {
@@ -15,13 +17,11 @@ public:
 	COddCluster(float start, float end, int length, float locations, float data_mdi, int last_data);
 	virtual ~COddCluster();
 
-
 	std::string toString();
-protected:
 	float m_start;
 	float m_end;
-	float m_length;
-	float m_locations;
+	int m_length;
+	std::vector<int> m_locations;
 	float m_data_mdi;
 	int m_last_data;
 };
@@ -40,6 +40,6 @@ namespace INTERNAL_CHECKS
 		: param bool second : run for second time
 		: returns :
 		*/
-	void occ(CStation station, std::vector<std::string> variable_list, std::vector<std::string>full_variable_list, std::vector<int>flag_col,
+	void occ(CStation station, std::vector<std::string> variable_list, std::vector<int>flag_col, 
 		std::ofstream &logfile, bool second = false);
 }

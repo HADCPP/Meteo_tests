@@ -202,6 +202,20 @@ namespace UTILS
 	{
 
 	}
+	/*
+	Applying windspeed flags to wind directions synergistically
+    Called after every test which assess windspeeds
+
+    :param object station: the station object to be processed
+	*/
+	void apply_windspeed_flags_to_winddir(CStation& station)
+	{
+		CMetVar & windspeeds = station.getMetvar("windspeeds");
+		CMetVar & winddirs = station.getMetvar("winddirs");
+
+		winddirs.setFlags(windspeeds.getFlags());
+	}
+
 	 void append_history(CStation& station, string text)
 	{
 		time_t _time;
@@ -218,11 +232,9 @@ namespace UTILS
 		où st_var.flags==1 sont masquées
 	*/
 
-	valarray<float> apply_filter_flags(CMetVar &st_var)
+	CMaskedArray apply_filter_flags(CMetVar& st_var)
 	{
-		valarray<float> dummy = st_var.getData();
-		dummy[dummy == float(1)] = 777;
-		return  PYTHON_FUNCTION::masked_values<float>(st_var.getData(),1);
+		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags(),1,st_var.getData());
 	}
 
 	float reporting_accuracy(valarray<float> good_values, bool winddir)

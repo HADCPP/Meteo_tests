@@ -21,6 +21,7 @@
 #include "duplicate_months.h"
 #include "utils.h"
 #include "frequent_values.h"
+#include "odd_cluster.h"
 
 
 using namespace std;
@@ -135,7 +136,10 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.odd)
 			{
-
+				vector<string> variable_list = { "temperatures","dewpoints","windspeeds","slp"};
+				vector<int> flag_col = { 54, 55, 56, 57 };
+				occ(station, variable_list, flag_col, logfile, second);
+				UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.frequent)
 			{

@@ -4,6 +4,47 @@
 #include <valarray>
 
 
+class CMaskedArray
+{
+public:
+
+	CMaskedArray::CMaskedArray(std::valarray<float> data)
+	{
+		m_fill_value = float(1e20);
+		m_data = data;
+		m_mask = false;
+	}
+		
+	
+
+	float fill_value(){ return m_fill_value; }
+	std::valarray<float> data(){ return m_data; }
+	std::valarray<bool>	mask(){ return m_mask; }
+
+	bool nomask()
+	{ 
+		if (m_mask.max() == true)
+			return false;
+		else return true;
+	}
+	
+	std::valarray<float> compressed(){ return m_data[!m_mask]; }
+
+	void masked(size_t index)
+	{
+		m_mask[index] = true;
+	}
+
+protected:
+
+	float m_fill_value;
+	std::valarray<float> m_data;
+	std::valarray<bool> m_mask; 
+	std::vector<size_t> m_masked_indices;
+	
+};
+
+
 namespace PYTHON_FUNCTION
 {
 	/*Return evenly spaced numbers over a specified interval.
@@ -124,6 +165,20 @@ namespace PYTHON_FUNCTION
 			if (v1[i] != value) vec.push_back(i);
 		}
 		return vec;
+	}
+
+	template<typename T,typename S>
+	CMaskedArray ma_masked_where(std::valarray<T> valaray1, T value, std::valarray<S> valaray2)
+	{
+		CMaskedArray dummy = CMaskedArray(valaray2);
+		for (size_t i = 0; i < valaray1.size(); i++)
+		{
+			if (valaray1[i] == value)
+			{
+				dummy.masked(i);
+			}
+		}
+		return dummy;
 	}
 	template<typename T>
 	inline std::vector<int> np_where(std::slice_array<T> v1, std::slice_array<T> v2)

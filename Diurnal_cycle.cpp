@@ -40,16 +40,16 @@ namespace DIURNAL
 		for (string variable : variable_list)
 		{
 			CMetVar &st_var = station.getMetvar(variable);
-			valarray<float> filtered_data = UTILS::apply_filter_flags(st_var);
+			CMaskedArray filtered_data = UTILS::apply_filter_flags(st_var);
 			vector<valarray<float>> v_filtered_data;
 			int iteration = 1;
 			valarray<float> h_filter_data;
 			int val_index = 0;
-			for (int i = 0; i < filtered_data.size();i++)
+			for (int i = 0; i < filtered_data.data().size(); i++)
 			{
 				if (iteration <= 24)
 				{
-					h_filter_data[val_index] = filtered_data[i];
+					h_filter_data[val_index] = filtered_data.data()[i];
 					iteration++;
 				}
 				else
@@ -57,7 +57,7 @@ namespace DIURNAL
 					v_filtered_data.push_back(h_filter_data);
 					val_index=0;
 					
-					h_filter_data[val_index] = filtered_data[i];
+					h_filter_data[val_index] = filtered_data.data()[i];
 					iteration = 2;
 				}
 
@@ -273,7 +273,7 @@ namespace DIURNAL
 				{
 					if (to_flag[d] == 1)
 					{
-						valarray<float> dummy(1., filtered_data.size());      //filtered data ne contient aucune donnée masquée
+						valarray<float> dummy(1., filtered_data.data().size());      //filtered data ne contient aucune donnée masquée
 						dcc_flags.push_back(dummy);
 						dummy.free();
 					}

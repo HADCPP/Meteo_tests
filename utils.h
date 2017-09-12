@@ -3,6 +3,7 @@
 #include "station.h"
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <valarray>
+#include "python_function.h"
 
 
 
@@ -16,8 +17,9 @@ namespace UTILS
 	void monthly_reporting_statistics(const CMetVar& st_var, boost::gregorian::date start, boost::gregorian::date end);
 	void print_flagged_obs_number(std::ofstream & logfile, std::string test, std::string variable, int nflags, bool noWrite=false);
 	void apply_flags_all_variables(CStation& station, std::vector<std::string> full_variable_list, int flag_col, std::ofstream & logfile, std::string test);
+	void apply_windspeed_flags_to_winddir(CStation& station);
 	void append_history(CStation& station, std::string text);
-	std::valarray<float> apply_filter_flags(CMetVar& st_var);
+	CMaskedArray  apply_filter_flags(CMetVar& st_var);
 	void print_flagged_obs_number(std::ofstream& logfile, std::string test, std::string variable, int nflags, bool noWrite);
 	inline float __cdecl MyApplyRoundFunc(float n)
 	{
@@ -52,9 +54,8 @@ namespace UTILS
 		if (s == "int")
 			return static_cast<T>(std::atoi(data.c_str()));
 
-		if (s == "float")
+		else
 			return static_cast<T>(std::atof(data.c_str()));
-
 
 	}
 

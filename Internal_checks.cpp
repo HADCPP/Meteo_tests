@@ -159,6 +159,11 @@ namespace INTERNAL_CHECKS
 			if (mytest.records)
 			{
 				krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
+				UTILS::apply_windspeed_flags_to_winddir(station);
+			}
+			if (mytest.streaks)
+			{
+
 			}
 			//Write to file
 			if (first)

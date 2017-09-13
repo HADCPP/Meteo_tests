@@ -163,6 +163,7 @@
     <ClCompile Include="odd_cluster.cpp" />
     <ClCompile Include="records.cpp" />
     <ClCompile Include="station.cpp" />
+    <ClCompile Include="streaks.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -176,6 +177,7 @@
     <ClInclude Include="station.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="netCDFUtils.h" />
+    <ClInclude Include="streaks.h" />
     <ClInclude Include="utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

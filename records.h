@@ -1,3 +1,8 @@
+/** Known Records Check (KRC)
+#
+#   Check for exceedence of world records
+*/
+
 #pragma once
 #include "station.h"
 

@@ -46,6 +46,7 @@ public:
 	void setFlags(std::valarray<float> flag){ m_flags = flag; }
 	void setFlags(std::valarray<size_t> v_flag,float flag){ m_flags[v_flag] = flag; }
 	void setData(std::valarray<float> data){ m_data = data; }
+	void setData(std::valarray<size_t> data,float val){ m_data[data] = val; }
 	void setMaskedData(std::valarray<float> data){ m_masked_data = data; }
 	std::string getMdi(){ return m_mdi; }
 	float getFdi(){ return m_fdi; }

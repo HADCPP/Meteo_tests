@@ -114,6 +114,7 @@ public:
 		const std::string& getWmoId()const{ return m_wmoid; }
 		// Remplir qc_flag correpondant à la variable qui se trouve à la position colonne
 		void setQc_flags(std::valarray<float> qc_flags,int v){ m_qc_flags[v] = qc_flags; }
+		void setQc_flags(float value, std::valarray<size_t> indices, int index){ m_qc_flags[index][indices] = value; }
 		void setQc_flags(std::valarray<float> qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
 		const std::vector<std::valarray<float>>& getQc_flags()const{ return m_qc_flags; }
 		void setMetVar(CMetVar metvar, std::string var){ (m_Met_var)[var] = metvar; }

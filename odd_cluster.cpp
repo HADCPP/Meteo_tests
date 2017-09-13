@@ -216,7 +216,7 @@ namespace INTERNAL_CHECKS
 			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], 0, '!');
 			UTILS::print_flagged_obs_number(logfile, "Odd Cluster", variable, flag_locs.size() - prev_flag_number);
 			//copy flags into attribute
-			st_var.setFlags(flag_locs, 1);
+			st_var.setFlags(flag_locs, float(1));
 			v++;
 		}
 		UTILS::append_history(station, "Isolated Odd Cluster Check");

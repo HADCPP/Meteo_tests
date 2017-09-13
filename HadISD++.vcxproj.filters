@@ -45,6 +45,9 @@
     <ClCompile Include="Diurnal_cycle.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="records.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="duplicate_months.h">
@@ -75,6 +78,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="odd_cluster.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="records.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

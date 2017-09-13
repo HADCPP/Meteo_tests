@@ -15,7 +15,7 @@ namespace
 	const int INTMDI = -999;
 	bool DYNAMIC_DIURNAL = true;
 }
-namespace DIURNAL
+namespace INTERNAL_CHECKS
 {
 
 	float __cdecl MyApplySinus(float n)

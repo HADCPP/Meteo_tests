@@ -1,16 +1,22 @@
 #include "Internal_checks.h"
-#include <vector>
-#include <ctime>
 #include "station.h"
-#include <sstream>
-#include <iostream>
-#include <string>
-#include <fstream>
 #include "netCDFUtils.h"
 #include "netcdf.h"
 #include "ncFile.h"
 #include "ncDim.h"
 #include "ncVar.h"
+#include "duplicate_months.h"
+#include "utils.h"
+#include "frequent_values.h"
+#include "odd_cluster.h"
+#include "records.h"
+
+#include <vector>
+#include <ctime>
+#include <sstream>
+#include <iostream>
+#include <string>
+#include <fstream>
 #include <errno.h>
 #include <exception>
 #include <cmath>
@@ -18,10 +24,7 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/chrono.hpp>
-#include "duplicate_months.h"
-#include "utils.h"
-#include "frequent_values.h"
-#include "odd_cluster.h"
+
 
 
 using namespace std;
@@ -143,25 +146,20 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.frequent)
 			{
-				/*vector<string> variable_list;
-				variable_list.push_back("temperatures");
-				variable_list.push_back("dewpoints");
-				variable_list.push_back("slp");
-				vector<int> flag_col;
-				flag_col.push_back(3);
-				flag_col.push_back(2);
-				flag_col.push_back(1);*/
-
+				
 				FREQUENT_VALUES::fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
 			}
 			if (mytest.diurnal)
 			{
-				if (std::abs(station.getLat() <= 60))
+				if (std::abs(station.getLat()) <= 60.)
 					cout << "  ";
 				else
 					logfile << "Diurnal Cycle Check not run as CStation latitude" << station.getLat()<< "  > 60 ";
 			}
-
+			if (mytest.records)
+			{
+				krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
+			}
 			//Write to file
 			if (first)
 			{

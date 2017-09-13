@@ -161,6 +161,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="netCDFUtils.cpp" />
     <ClCompile Include="odd_cluster.cpp" />
+    <ClCompile Include="records.cpp" />
     <ClCompile Include="station.cpp" />
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
@@ -171,6 +172,7 @@
     <ClInclude Include="Internal_checks.h" />
     <ClInclude Include="odd_cluster.h" />
     <ClInclude Include="python_function.h" />
+    <ClInclude Include="records.h" />
     <ClInclude Include="station.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="netCDFUtils.h" />

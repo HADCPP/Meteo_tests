@@ -157,6 +157,48 @@ namespace PYTHON_FUNCTION
 		return vec;
 	}
 	template<typename T>
+	inline std::valarray<std::size_t> npwhere( CMaskedArray& v1, T value, char condition)
+	{
+		std::valarray<std::size_t> vec(v1.data().size());
+
+		switch (condition)
+		{
+		case '=':
+			for (size_t i = 0; i < v1.data().size(); i++)
+			{
+				if (v1.data()[i] == value && v1.mask()[i]==false)
+					vec[i] = i;
+			
+			}
+			break;
+		case '!':
+			for (size_t i = 0; i < v1.data().size(); i++)
+			{
+				if (v1.data()[i] != value&& v1.mask()[i] == false)
+					vec[i] = i;
+			}
+			break;
+		case '<':
+			for (size_t i = 0; i < v1.data().size(); i++)
+			{
+				if (v1.data()[i] < value&& v1.mask()[i] == false)
+					vec[i] = i;
+			}
+			break;
+		case '>':
+			for (size_t i = 0; i < v1.data().size(); i++)
+			{
+				if (v1.data()[i] > value&& v1.mask()[i] == false)
+					vec[i] = i;
+			}
+			break;
+		default:
+
+			break;
+		}
+		return vec;
+	}
+	template<typename T>
 	inline std::vector<int> np_where_vec(std::valarray<T> v1, T value)
 	{
 		std::vector<int> vec;

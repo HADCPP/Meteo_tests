@@ -3,7 +3,7 @@ odd  		 ousmane
 frequent  	 ousmane
 diurnal  	 ousmane
 gap          Remi
-records  
+records   ousmane
 streaks  
 climatological  
 spike  

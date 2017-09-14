@@ -103,7 +103,7 @@ namespace INTERNAL_CHECKS
 		}
 		else  //Gap in data not sufficiently large 
 		{
-			obs_type == 1;
+			obs_type = 1;
 			cluster.m_last_data = time;
 			cluster.m_length = 0;
 			cluster.m_start = cluster.m_data_mdi;

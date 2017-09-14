@@ -13,13 +13,14 @@
 #include <ctime>
 using namespace std;
 using namespace boost;
+using namespace dlib;
 using namespace PYTHON_FUNCTION;
 namespace UTILS
 {
 	/*
 		Returns locations of month starts(using hours as index)
 	*/
-	inline void month_starts(boost::gregorian::date start, boost::gregorian::date end,vector<int> &month_locs)
+	inline void month_starts(boost::gregorian::date start, boost::gregorian::date end,std::vector<int> &month_locs)
 	{
 		
 		boost::gregorian::date Date = start;
@@ -59,7 +60,7 @@ namespace UTILS
 	inline map<int,int> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end)
 	{
 		//set up the arrays of month start locations
-		vector<int> m_starts;
+		std::vector<int> m_starts;
 		month_starts(start, end,m_starts);
 
 		map<int,int > month_ranges; 
@@ -75,7 +76,7 @@ namespace UTILS
 		return month_ranges;
 	}
 
-	valarray<bool> create_fulltimes(CStation& station, vector<string> var_list, boost::gregorian::date start,boost::gregorian::date end, vector<string> opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
+	valarray<bool> create_fulltimes(CStation& station, std::vector<string> var_list, boost::gregorian::date start, boost::gregorian::date end, std::vector<string> opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
 	{
 		//expand the time axis of the variables
 		boost::gregorian::date_duration DaysBetween = end - start;
@@ -97,18 +98,18 @@ namespace UTILS
 		match_reverse = PYTHON_FUNCTION::in1D<float, float>(station.getMetvar("time").getData(), fulltimes);
 
 		//if optional/carry through variables given, then set to extract these too
-		vector<string> full_var_list;
+		std::vector<string> full_var_list;
 		copy(var_list.begin(), var_list.end(), std::back_inserter(full_var_list));
 
 		if (opt_var_list.size() != 0)
 		{
 			copy(opt_var_list.begin(), opt_var_list.end(), std::back_inserter(full_var_list));
 		}
-		vector<string> final_var_list;
+		std::vector<string> final_var_list;
 		copy(full_var_list.begin(), full_var_list.end(), std::back_inserter(final_var_list));
 		//if (do_input_station_id)  final_var_list.push_back("input_station_id");
 
-		for (vector<string>::iterator variable = final_var_list.begin(); variable != final_var_list.end(); variable++)
+		for (std::vector<string>::iterator variable = final_var_list.begin(); variable != final_var_list.end(); variable++)
 		{
 			CMetVar& st_var = station.getMetvar(*variable);
 			//use masked arrays for ease of filtering later
@@ -198,7 +199,7 @@ namespace UTILS
 		: param file logfile : logfile to store outputs
 		: returns :
 		*/
-	void apply_flags_all_variables(CStation& station,vector<string> full_variable_list, int flag_col,ofstream& logfile, string test)
+	 void apply_flags_all_variables(CStation& station, std::vector<string> full_variable_list, int flag_col, ofstream& logfile, string test)
 	{
 
 	}
@@ -295,5 +296,136 @@ namespace UTILS
 				bincenters[i] = 0.5*(bins[i] + bins[i+1]);
 
 
+	}
+	double model(const valarray<float>& input, const valarray<float>& params)
+	{
+		const double p0 = params[0];
+		const double p1 = params[1];
+
+		const double i0 = input[0];
+		const double temp = p0*i0 + p1 ;
+
+		return temp*temp;
+	}
+	// ----------------------------------------------------------------------------------------
+
+	// This function is the "residual" for a least squares problem.   It takes an input/output
+	// pair and compares it to the output of our model and returns the amount of error.  The idea
+	// is to find the set of parameters which makes the residual small on all the data pairs.
+	// Source : dlib documentation
+	double residual(const std::pair<valarray<float>, double>& data, const valarray<float>& params)
+	{
+		return model(data.first, params) - data.second;
+	}
+	// ----------------------------------------------------------------------------------------
+	// This function is the derivative of the residual() function with respect to the parameters.
+	valarray<float> residual_derivative(const std::pair<valarray<float>, double>& data, const valarray<float>& params)
+	{
+		valarray<float> der(2);
+
+		const double p0 = params[0];
+		const double p1 = params[1];
+		
+
+		const double i0 = data.first[0];
+		
+
+		const double temp = p0*i0 + p1 ;
+
+		der[0] = i0 * 2 * temp;
+		der[1] = 2 * temp;
+		
+		return der;
+	}
+	/*
+		decay function for line fitting
+		p[0] = intercept
+		p[1] = slope
+	*/
+	valarray<float> linear(const valarray<float>& X, const valarray<float>& p)
+	{
+		return p[1] * X + p[0];
+	}
+
+	template<typename T>
+	float get_critical_values(std::vector<T> indata, int binmin , int binwidth , float old_threshold )
+	{
+
+		float threshold;
+		if (indata.size() > 0)  //sort indata ?
+		{
+			vector<T> dummy = np_abs(indata);
+			dummy = np_ceil(dummy);
+			valarray<float> full_edges = arange<float>(float(3 * max(dummy.begin(), dummy.end())), float(binmin), float(binwidth));
+			dummy.free();
+			valarray<float> full_hist = histogram(float(np_abs(indata)), full_edges);
+			if (full_hist.size() > 1)
+			{
+				// use only the central section (as long as it's not just 2 bins)
+				int i = 0;
+				int limit = 0;
+				while (limit < 2)
+				{
+					if (npwhere<float>(full_hist, 0., '=').size()>0)
+					{
+						limit = npwhere(full_hist, 0., '=')[i];  //where instead of argwhere??
+						i++;
+					}
+					else
+					{
+						limit = full_hist.size();
+						break;
+					}
+				}
+				valarray<float> edges = full_edges[std::slice(0, limit, 1)];
+				valarray<float> hist = full_hist[std::slice(0, limit, 1)];
+				hist.apply(Log10Func());
+				//Initialiser les parametres
+				
+				// DATA (X,Y)
+				std::vector<pair<double, double>> data;
+				for (size_t i = 0; i < edges.size(); ++i)
+				{
+					data.push_back(make_pair(edges[i], hist[i]));
+				}
+				// Now let's use the solve_least_squares_lm() routine to figure out what the
+				// parameters are based on just the data.
+				//Use the Levenberg-Marquardt method to determine the parameters which
+				// minimize the sum of all squared residuals
+				valarray<float> fit(2) = { hist[np_argmax(hist)], 1 };
+				dlib::solve_least_squares_lm(objective_delta_stop_strategy(1e-7).be_verbose(),
+					residual,
+					derivative(residual),
+					data,
+					fit);
+				valarray<float> fit_curve = linear(full_edges, fit);
+				if (fit[1] < 0)
+				{
+					//in case the fit has a positive slope
+					//where does fit fall below log10(-0.1)
+					if (npwhere<size_t>(fit_curve, -1, '<').size()>0)
+					{
+						size_t fit_below_point1 = npwhere<size_t>(fit_curve, -1, '<')[0];
+						valarray<float> dummy = full_hist[slice(fit_below_point1, full_hist.size() - fit_below_point1, 1)];
+						size_t first_zero_bin = npwhere<size_t>(dummy, 0, '=')[0] + 1;
+						threshold = binwidth*(fit_below_point1 + first_zero_bin);
+					}
+					else
+					{
+						//too shallow a decay - use default maximum
+						threshold = full_hist.size();
+					}
+					//find first empty bin after that
+				}
+				else threshold = full_hist.size();
+				
+			}
+			else 
+				threshold = std::max_element(indata.begin(),indata.end()) + binwidth;
+		}
+		else 
+			threshold = std::max_element(indata.begin(), indata.end()) + binwidth;
+
+		return threshold;
 	}
 }

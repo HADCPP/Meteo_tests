@@ -1,11 +1,13 @@
 #pragma once
-#include<vector>
+
 #include "station.h"
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <valarray>
 #include "python_function.h"
 
-
+#include<vector>
+#include <algorithm>
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <valarray>
+#include <dlib\optimization.h>
 
 namespace UTILS
 {
@@ -24,6 +26,10 @@ namespace UTILS
 	inline float __cdecl MyApplyRoundFunc(float n)
 	{
 		return std::floor(n);
+	}
+	inline float __cdecl Log10Func(float n)
+	{
+		return std::log10f(n);
 	}
 	/*
 	Uses histogram of remainders to look for special values
@@ -59,4 +65,15 @@ namespace UTILS
 
 	}
 
+	/*
+		Plot histogram on log-y scale and fit 1/x decay curve to set threshold
+		 :param array indata: input data to bin up
+		:param int binmin: minimum bin value
+		:param int binwidth: bin width
+		:param str line_label: label for plotted histogram
+		:param float old_threshold: (spike) plot the old threshold from IQR as well
+
+		:returns:   threshold value
+	   */
+	float get_critical_values(std::vector<int> indata, int binmin = 0, int binwidth = 1, float old_threshold = 0.);
 }

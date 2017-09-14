@@ -10,9 +10,36 @@ namespace INTERNAL_CHECKS
 
 	float rsc_get_straight_string_threshold(CMetVar& st_var, boost::gregorian::date   start, boost::gregorian::date   end, float reporting , float old_threshold)
 	{
-		float threshold=0.;
+		
 		CMaskedArray all_filtered = apply_filter_flags(st_var);
-		return threshold;
+		//find and count the length of all repeating strings
+		float prev_value = Cast<float>(st_var.getMdi());
+		vector<int> this_string;
+		vector<int> string_length;
+		//run through all obs
+		int o = 0;
+		for (float obs : all_filtered.data())
+		{
+			if (all_filtered.mask()[0] == false)
+			{
+				if (obs != prev_value)
+				{
+					//if different values to before
+					string_length.push_back(this_string.size());
+					this_string.clear();
+					this_string.push_back(o);
+				}
+				else
+				{
+					// if same value as before, note and continue
+					this_string.push_back(o);
+				}
+				prev_value = obs;
+			}
+			o++;
+		}
+		return prev_value;
+
 	}
 
 	void rsc_straight_strings(  CMetVar& st_var , std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, bool wind , float reporting , bool dynamic)

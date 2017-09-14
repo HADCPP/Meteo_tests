@@ -4,6 +4,7 @@
 #include <valarray>
 
 
+
 class CMaskedArray
 {
 public:
@@ -112,54 +113,60 @@ namespace PYTHON_FUNCTION
 	template<typename T>
 	inline std::valarray<T> np_where(std::valarray<T> v1, T value)
 	{
-		std::valarray<T> vec(v1.size());
+		std::vector<size_t> index;
 		for (int i = 0; i < v1.size(); i++)
 		{
-			if (v1[i] != value) vec[i]=i;
+			if (v1[i] != value) index.push_back(i);
 		}
+		std::valarray<T> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
 		return vec;
 	}
 	template<typename T>
 	inline std::valarray<std::size_t> npwhere(std::valarray<T> v1, T value,char condition)
 	{
-		std::valarray<std::size_t> vec(v1.size());
 		
-		switch (condition)
-		{
+			std::vector<size_t> index;
+			switch (condition)
+			{
 			case '=':
 				for (size_t i = 0; i < v1.size(); i++)
 				{
-					if (v1[i] == value) vec[i] = i;
+					if (v1[i] == value) index.push_back(i);
 				}
 				break;
 			case '!':
 				for (size_t i = 0; i < v1.size(); i++)
 				{
-					if (v1[i] != value) vec[i] = i;
+					if (v1[i] != value) index.push_back(i);
 				}
 				break;
 			case '<':
 				for (size_t i = 0; i < v1.size(); i++)
 				{
-					if (v1[i] < value) vec[i] = i;
+					if (v1[i] < value) index.push_back(i);
 				}
 				break;
 			case '>':
 				for (size_t i = 0; i < v1.size(); i++)
 				{
-					if (v1[i] > value) vec[i] = i;
+					if (v1[i] > value) index.push_back(i);
 				}
 				break;
 			default:
-				
-			break;	
-		}
-		return vec;
+				break;
+			}
+			std::valarray<std::size_t> vec(index.size());
+			std::copy(index.begin(), index.end(), std::begin(vec));
+			return vec;
+		
+		
 	}
 	template<typename T>
 	inline std::valarray<std::size_t> npwhere( CMaskedArray& v1, T value, char condition)
 	{
-		std::valarray<std::size_t> vec(v1.data().size());
+		std::vector<size_t> index;
+		
 
 		switch (condition)
 		{
@@ -167,7 +174,7 @@ namespace PYTHON_FUNCTION
 			for (size_t i = 0; i < v1.data().size(); i++)
 			{
 				if (v1.data()[i] == value && v1.mask()[i]==false)
-					vec[i] = i;
+					index.push_back(i);
 			
 			}
 			break;
@@ -175,27 +182,28 @@ namespace PYTHON_FUNCTION
 			for (size_t i = 0; i < v1.data().size(); i++)
 			{
 				if (v1.data()[i] != value&& v1.mask()[i] == false)
-					vec[i] = i;
+					index.push_back(i);
 			}
 			break;
 		case '<':
 			for (size_t i = 0; i < v1.data().size(); i++)
 			{
 				if (v1.data()[i] < value&& v1.mask()[i] == false)
-					vec[i] = i;
+					index.push_back(i);
 			}
 			break;
 		case '>':
 			for (size_t i = 0; i < v1.data().size(); i++)
 			{
 				if (v1.data()[i] > value&& v1.mask()[i] == false)
-					vec[i] = i;
+					index.push_back(i);
 			}
 			break;
 		default:
-
 			break;
 		}
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
 		return vec;
 	}
 	template<typename T>
@@ -226,9 +234,7 @@ namespace PYTHON_FUNCTION
 	inline std::vector<int> np_where(std::slice_array<T> v1, std::slice_array<T> v2)
 	{
 		std::vector<int> vec;
-		std::valarray<T> vl1(v1.size()), vl2(v2.size());
-		vl1 = v1;
-		vl2 = v2;
+		std::valarray<T> vl1 = v1, vl2=v2;
 		for (int i = 0; i < v1.size(); i++)
 		{
 			if (vl1[i]== vl2[i]) vec.push_back(i);
@@ -309,5 +315,39 @@ namespace PYTHON_FUNCTION
 		}
 		return j;
 	}
+	// recuperer l'indice du maximun de l'array (seule la première occurence est retournée)
+	inline int np_argmax(const std::valarray<float>& val)
+	{
+		float max= val.max();
+		int j = 0;
+		for (int i = 0; i < val.size(); i++)
+		{
+			if (val[i] == max)
+			{
+				j = i;
+				break;
+			}
+		}
+		return j;
+	}
 	
+	template<typename T>
+	inline std::vector<T> np_abs(std::vector<T> data)
+	{
+		std::vector<T> abs_value;
+		for (T value : data)
+			abs_value.push_back(std::abs(value));
+
+		return abs_value;
+	}
+
+	template<typename T>
+	inline std::vector<T> np_ceil(std::vector<T> data)
+	{
+		std::vector<T> ceil_value;
+		for (T value : data)
+			abs_value.push_back(std::ceilf(value));
+
+		return abs_value;
+	}
 }

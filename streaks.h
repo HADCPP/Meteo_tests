@@ -37,7 +37,7 @@ namespace INTERNAL_CHECKS
 		: param bool plots : do plots
 		: param float old_threshold : old threshold to use as comparison
 	*/
-	float rsc_get_straight_string_threshold(CMetVar& st_var, boost::gregorian::date   start, boost::gregorian::date   end, float reporting = 0., float old_threshold = 0.);
+	inline float rsc_get_straight_string_threshold(CMetVar& st_var, boost::gregorian::date   start, boost::gregorian::date  end, float reporting = 0., float old_threshold = 0.);
 
 	/*
 	Check for strings/streaks of repeating values
@@ -50,7 +50,7 @@ namespace INTERNAL_CHECKS
     :param bool wind: whether there is wind data to account for - extra minimum value
     :param bool dynamic: calculate threshold of number of observations dynamically rather than using n_obs
 	*/
-	void rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, bool wind = false, float reporting = 0., bool dynamic = true);
+	void rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind = false, float reporting = 0., bool dynamic = true);
 
 	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<int>  flag_col, boost::gregorian::date  start,
 		boost::gregorian::date end, std::ofstream& logfile);

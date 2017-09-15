@@ -35,7 +35,10 @@ public:
 	{
 		m_mask[index] = true;
 	}
-
+	size_t size()
+	{
+		return m_data.size();
+	}
 protected:
 
 	float m_fill_value;

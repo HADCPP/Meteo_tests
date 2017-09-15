@@ -48,7 +48,7 @@ namespace INTERNAL_CHECKS
 			region = "Europe";
 		if (201000 <= wmoid && wmoid <= 201999)
 			region = "Europe";
-		if (220000 <= wmoid && wmoid <= 229999);
+		if (220000 <= wmoid && wmoid <= 229999)
 			region = "Europe";
 		if (260000 <= wmoid && wmoid <= 279999)
 			region = "Europe";

@@ -1,4 +1,6 @@
 #include "streaks.h"
+#include  "utils.h"
+
 
 using namespace std;
 using namespace PYTHON_FUNCTION;
@@ -8,7 +10,7 @@ namespace INTERNAL_CHECKS
 {
 
 
-	float rsc_get_straight_string_threshold(CMetVar& st_var, boost::gregorian::date   start, boost::gregorian::date   end, float reporting , float old_threshold)
+	inline float rsc_get_straight_string_threshold(CMetVar& st_var, boost::gregorian::date   start, boost::gregorian::date   end, float reporting , float old_threshold)
 	{
 		
 		CMaskedArray all_filtered = apply_filter_flags(st_var);
@@ -38,28 +40,85 @@ namespace INTERNAL_CHECKS
 			}
 			o++;
 		}
-		return prev_value;
-
+		float threshold = get_critical_values(string_length, 1, 1, old_threshold);
+		return  threshold;
+		 
 	}
 
-	void rsc_straight_strings(  CMetVar& st_var , std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, bool wind , float reporting , bool dynamic)
+	void rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, map<float, float> WIND_MIN_VALUE, bool wind, float reporting, bool dynamic)
 	{
 		float threshold;
+		CMaskedArray all_filtered = apply_filter_flags(st_var);
 		if (st_var.getName() == "winddirs")
 		{
 			//remove calm periods for this check
 			CMetVar wd_st_var = st_var;
-			valarray<size_t> calms = npwhere(st_var.getData(), float(0), '=');
+			valarray<size_t> calms = npwhere(st_var.getData(), float(0), '=');  //True calms have direction set to 0, northerlies to 360
 			wd_st_var.setData(calms,Cast<float>( wd_st_var.getMdi()));
 
 			if (dynamic)
 			{
-
+				threshold = rsc_get_straight_string_threshold(wd_st_var, start, end, reporting, float(n_obs));
+				if (threshold < n_obs)  n_obs = int(threshold);
+			}
+			all_filtered = apply_filter_flags(wd_st_var); // calms have been removed
+		}
+		else
+		{
+			if (dynamic)
+			{
+				threshold = rsc_get_straight_string_threshold(st_var, start, end, reporting, float(n_obs));
+				if (threshold < n_obs)  n_obs = int(threshold);
 			}
 		}
+		valarray<float> flags(0., all_filtered.size());
+		//Look for continuous straight strings
+
+		float prev_value = Cast<float>(st_var.getMdi());
+		vector<int> string_points;
+		//storage for excess over years
+		vector<int> values_starts;
+		vector<int> values_lengths;
+
+		int o = 0;
+		for (float obs : all_filtered.data())
+		{
+			if (all_filtered.mask()[o] == false)
+			{
+				if (obs != prev_value)
+				{
+					if (st_var.getName() == "winddirs" && prev_value == 0);
+
+					else
+					{
+						//if different value to before, which is long enough (and large enough for Wind)
+						if (string_points.size() >= 10)
+						{
+							if (wind == false || (wind == true && prev_value > WIND_MIN_VALUE[reporting]))
+							{
+								//note start and length for the annual excess test
+								values_starts.push_back(string_points[0]);
+								values_lengths.push_back(string_points.size());
+
+								int time_diff = times[string_points[string_points.size() - 1]] - times[string_points[0]];
+								
+								//if length above threshold and spread over sufficient time frame, flag
+
+								if (string_points.size() >= n_obs || time_diff >= n_days * 24) //measuring time in hours
+								{
+									valarray<bool> dummy(false, *std::max_element(string_points.begin(), string_points.end()));
+
+								}
+							}
+						}
+					}
+				}
+			}
+			o++;
+		}
+
+
 	}
-
-
 
 	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<int>  flag_col, boost::gregorian::date  start,
 		boost::gregorian::date end, std::ofstream& logfile)

@@ -348,7 +348,7 @@ namespace UTILS
 	}
 
 	template<typename T>
-	float get_critical_values(std::vector<T> indata, int binmin , int binwidth , float old_threshold )
+	inline float get_critical_values(std::vector<T> indata, int binmin , int binwidth , float old_threshold )
 	{
 
 		float threshold;

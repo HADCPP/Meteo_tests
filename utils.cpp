@@ -20,6 +20,10 @@ namespace UTILS
 	/*
 		Returns locations of month starts(using hours as index)
 	*/
+	typedef matrix<double, 1, 1> input_vector;
+	typedef matrix<double, 2, 1> parameter_vector;
+
+
 	inline void month_starts(boost::gregorian::date start, boost::gregorian::date end,std::vector<int> &month_locs)
 	{
 		
@@ -297,12 +301,12 @@ namespace UTILS
 
 
 	}
-	double model(const valarray<float>& input, const valarray<float>& params)
+	double model(const input_vector&  input, const parameter_vector& params)
 	{
-		const double p0 = params[0];
-		const double p1 = params[1];
+		const double p0 = params(0);
+		const double p1 = params(1);
 
-		const double i0 = input[0];
+		const double i0 = input(0);
 		const double temp = p0*i0 + p1 ;
 
 		return temp*temp;
@@ -313,27 +317,26 @@ namespace UTILS
 	// pair and compares it to the output of our model and returns the amount of error.  The idea
 	// is to find the set of parameters which makes the residual small on all the data pairs.
 	// Source : dlib documentation
-	double residual(const std::pair<valarray<float>, double>& data, const valarray<float>& params)
+	double residual(const std::pair<input_vector, double>& data, const parameter_vector& params)
 	{
 		return model(data.first, params) - data.second;
 	}
 	// ----------------------------------------------------------------------------------------
 	// This function is the derivative of the residual() function with respect to the parameters.
-	valarray<float> residual_derivative(const std::pair<valarray<float>, double>& data, const valarray<float>& params)
+	parameter_vector residual_derivative(const std::pair<input_vector, double>& data, const parameter_vector& params)
 	{
-		valarray<float> der(2);
+		parameter_vector der(2);
 
-		const double p0 = params[0];
-		const double p1 = params[1];
+		const double p0 = params(0);
+		const double p1 = params(1);
 		
 
-		const double i0 = data.first[0];
+		const double i0 = data.first(0);
 		
-
 		const double temp = p0*i0 + p1 ;
 
-		der[0] = i0 * 2 * temp;
-		der[1] = 2 * temp;
+		der(0) = i0 * 2 * temp;
+		der(1) = 2 * temp;
 		
 		return der;
 	}
@@ -342,23 +345,22 @@ namespace UTILS
 		p[0] = intercept
 		p[1] = slope
 	*/
-	valarray<float> linear(const valarray<float>& X, const valarray<float>& p)
+	valarray<float> linear(const valarray<float>& X,  parameter_vector& p)
 	{
-		return p[1] * X + p[0];
+		return float(p(1)) * X + float(p(0));
 	}
 
-	template<typename T>
-	inline float get_critical_values(std::vector<T> indata, int binmin , int binwidth , float old_threshold )
+	float get_critical_values(std::vector<int> indata, int binmin , int binwidth , float old_threshold )
 	{
 
 		float threshold;
 		if (indata.size() > 0)  //sort indata ?
 		{
-			vector<T> dummy = np_abs(indata);
-			dummy = np_ceil(dummy);
-			valarray<float> full_edges = arange<float>(float(3 * max(dummy.begin(), dummy.end())), float(binmin), float(binwidth));
-			dummy.free();
-			valarray<float> full_hist = histogram(float(np_abs(indata)), full_edges);
+			std::vector<int> dummy = np_abs(indata);
+			dummy = np_ceil<int>(dummy);
+			valarray<float> full_edges = arange<float>(float(3* (*max(dummy.begin(), dummy.end()))), float(binmin), float(binwidth));
+			dummy.clear();
+			valarray<float> full_hist = histogram<float,int>(np_abs(indata), full_edges);
 			if (full_hist.size() > 1)
 			{
 				// use only the central section (as long as it's not just 2 bins)
@@ -368,7 +370,7 @@ namespace UTILS
 				{
 					if (npwhere<float>(full_hist, 0., '=').size()>0)
 					{
-						limit = npwhere(full_hist, 0., '=')[i];  //where instead of argwhere??
+						limit = npwhere<float>(full_hist,0.,'=')[i];  //where instead of argwhere??
 						i++;
 					}
 					else
@@ -379,35 +381,42 @@ namespace UTILS
 				}
 				valarray<float> edges = full_edges[std::slice(0, limit, 1)];
 				valarray<float> hist = full_hist[std::slice(0, limit, 1)];
-				hist.apply(Log10Func());
+				hist.apply(Log10Func);
 				//Initialiser les parametres
 				
 				// DATA (X,Y)
-				std::vector<pair<double, double>> data;
+				
+
+				std::vector<pair<input_vector, double>> data;
+				input_vector input;
 				for (size_t i = 0; i < edges.size(); ++i)
 				{
-					data.push_back(make_pair(edges[i], hist[i]));
+					input(0) = edges[i];
+					data.push_back(make_pair(input, hist[i]));
 				}
 				// Now let's use the solve_least_squares_lm() routine to figure out what the
 				// parameters are based on just the data.
 				//Use the Levenberg-Marquardt method to determine the parameters which
 				// minimize the sum of all squared residuals
-				valarray<float> fit(2) = { hist[np_argmax(hist)], 1 };
+				parameter_vector  fit;
+				fit(0) = hist[np_argmax(hist)];
+				fit(1) = 1;
+			
 				dlib::solve_least_squares_lm(objective_delta_stop_strategy(1e-7).be_verbose(),
 					residual,
 					derivative(residual),
 					data,
 					fit);
 				valarray<float> fit_curve = linear(full_edges, fit);
-				if (fit[1] < 0)
+				if (fit(1) < 0)
 				{
 					//in case the fit has a positive slope
 					//where does fit fall below log10(-0.1)
-					if (npwhere<size_t>(fit_curve, -1, '<').size()>0)
+					if (npwhere<float>(fit_curve, float(-1), '<').size()>0)
 					{
-						size_t fit_below_point1 = npwhere<size_t>(fit_curve, -1, '<')[0];
+						size_t fit_below_point1 = npwhere<float>(fit_curve, float(-1), '<')[0];
 						valarray<float> dummy = full_hist[slice(fit_below_point1, full_hist.size() - fit_below_point1, 1)];
-						size_t first_zero_bin = npwhere<size_t>(dummy, 0, '=')[0] + 1;
+						size_t first_zero_bin = npwhere<float>(dummy, 0, '=')[0] + 1;
 						threshold = binwidth*(fit_below_point1 + first_zero_bin);
 					}
 					else
@@ -421,10 +430,10 @@ namespace UTILS
 				
 			}
 			else 
-				threshold = std::max_element(indata.begin(),indata.end()) + binwidth;
+				threshold = *std::max_element(indata.begin(),indata.end()) + binwidth;
 		}
 		else 
-			threshold = std::max_element(indata.begin(), indata.end()) + binwidth;
+			threshold = *std::max_element(indata.begin(), indata.end()) + binwidth;
 
 		return threshold;
 	}

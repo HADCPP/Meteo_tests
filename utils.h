@@ -75,5 +75,5 @@ namespace UTILS
 
 		:returns:   threshold value
 	   */
-	inline float get_critical_values(std::vector<int> indata, int binmin = 0, int binwidth = 1, float old_threshold = 0.);
+	float get_critical_values(std::vector<int> indata, int binmin = 0, int binwidth = 1, float old_threshold = 0.);
 }

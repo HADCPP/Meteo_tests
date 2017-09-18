@@ -276,8 +276,27 @@ namespace PYTHON_FUNCTION
 				}
 			}
 		return hist;
-	}
 
+	}
+	template<typename T,typename S>
+	inline std::valarray <T> histogram(std::vector<S> data, std::valarray<T> bin)
+	{
+		std::valarray<float> hist(bin.size() - 1);
+
+		bool lastbin = true;
+		for (int i = 0; i < data.size(); i++)
+			for (int j = 0; j < bin.size(); j++)
+			{
+				if (T(data[i]) >= bin[j] && T(data[i]) < bin[j + 1])
+					hist[j]++;
+				if (T(data[i]) == bin[bin.size() - 1] && lastbin)
+				{
+					hist[bin.size() - 2]++;
+					lastbin = false;
+				}
+			}
+		return hist;
+	}
 	inline void concatenate(std::valarray<float> &val1, std::valarray<float> val2)
 	{
 		std::valarray<float> val(val1.size() + val2.size());
@@ -349,8 +368,8 @@ namespace PYTHON_FUNCTION
 	{
 		std::vector<T> ceil_value;
 		for (T value : data)
-			abs_value.push_back(std::ceilf(value));
+			ceil_value.push_back(T(std::ceilf(value)));
 
-		return abs_value;
+		return ceil_value;
 	}
 }

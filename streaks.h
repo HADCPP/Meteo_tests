@@ -52,6 +52,20 @@ namespace INTERNAL_CHECKS
 	*/
 	void rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind = false, float reporting = 0., bool dynamic = true);
 
-	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<int>  flag_col, boost::gregorian::date  start,
+	/*
+	Find years where have more strings than expected, but not long enough to set off test
+    
+    :param array all_filtered: data filtered by all flags set so far
+    :param array value_starts: locations of start of strings/streaks of data
+    :param array value_lengths: lengths of each streak
+    :param array flags: array of flags to be set
+    :param datetime start: start of data
+    :param datetime end: end of data    
+    :param bool diagnostics: do diagnostic output
+    :param bool plots: do plots*/
+
+	void rsc_annual_string_expectance(const CMaskedArray& all_filtered, const std::vector<int>& value_starts, const std::vector<int>& value_lengths, std::valarray<float>& flags, boost::gregorian::date  start, boost::gregorian::date end, CMetVar& st_var, std::vector<int> times);
+	
+	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<std::vector<int>>  flag_col, boost::gregorian::date  start,
 		boost::gregorian::date end, std::ofstream& logfile);
 }

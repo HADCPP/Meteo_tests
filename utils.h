@@ -11,7 +11,7 @@
 
 namespace UTILS
 {
-	inline std::vector<int> month_starts(boost::gregorian::date start, boost::gregorian::date end);
+	void  month_starts(boost::gregorian::date start, boost::gregorian::date end, std::vector<int>& month_locs);
 	inline std::map<int, int> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end);
 	std::valarray<bool> create_fulltimes(CStation& station, std::vector<std::string> var_list, boost::gregorian::date start,
 		boost::gregorian::date end, std::vector<std::string> opt_var_list, bool do_input_station_id = true,

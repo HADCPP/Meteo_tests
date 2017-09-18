@@ -24,7 +24,7 @@ namespace UTILS
 	typedef matrix<double, 2, 1> parameter_vector;
 
 
-	inline void month_starts(boost::gregorian::date start, boost::gregorian::date end,std::vector<int> &month_locs)
+	void month_starts(boost::gregorian::date start, boost::gregorian::date end,std::vector<int>& month_locs)
 	{
 		
 		boost::gregorian::date Date = start;

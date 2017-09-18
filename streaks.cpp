@@ -44,6 +44,46 @@ namespace INTERNAL_CHECKS
 		return  threshold;
 		 
 	}
+	
+	void rsc_annual_string_expectance( CMaskedArray& all_filtered, const std::vector<int>& value_starts, const std::vector<int>& value_lengths, std::valarray<float>& flags, boost::gregorian::date  start, boost::gregorian::date end, CMetVar& st_var, std::vector<int> times)
+	{
+		vector<int> month_starts;
+		UTILS::month_starts(start, end,month_starts);  //  FONCTION RESHAPE
+		vector<valarray<int>> m_month_starts;
+		int iteration = 1;
+		valarray<int> month(12);
+		for (int i : month_starts)
+		{
+			if (iteration <= 12)
+			{
+				month[iteration-1]=i;
+				iteration++;
+			}
+			else
+			{
+				m_month_starts.push_back(month);
+				month.resize(12);
+				month[0] = i;
+				iteration = 2;
+			}
+		}
+		m_month_starts.push_back(month);
+
+		valarray < float > year_proportions(Cast<float>(st_var.getMdi()), m_month_starts.size());
+		valarray<float> year(all_filtered.size());
+		// churn through each year in turn
+		for (int y = 0; y < m_month_starts.size(); y++)
+		{
+			if (y != m_month_starts.size() - 1)
+				year = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
+			else
+				year = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
+
+			
+
+		}
+
+	}
 
 	void rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, map<float, float> WIND_MIN_VALUE, bool wind, float reporting, bool dynamic)
 	{
@@ -106,13 +146,25 @@ namespace INTERNAL_CHECKS
 
 								if (string_points.size() >= n_obs || time_diff >= n_days * 24) //measuring time in hours
 								{
-									valarray<bool> dummy(false, *std::max_element(string_points.begin(), string_points.end()));
-
+									valarray<bool> dummy(false, flags.size());
+									for (int val: string_points)
+									{
+										dummy[val] = true;
+									}
+									flags[dummy] = 1;
 								}
 							}
 						}
 					}
+					string_points.clear();
+					string_points.push_back(o);
 				}
+				else
+				{
+					//if same value as before, note and continue
+					string_points.push_back(o);
+				}
+				prev_value = obs;
 			}
 			o++;
 		}
@@ -120,7 +172,7 @@ namespace INTERNAL_CHECKS
 
 	}
 
-	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<int>  flag_col, boost::gregorian::date  start,
+	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<vector<int>>  flag_col, boost::gregorian::date  start,
 		boost::gregorian::date end, std::ofstream& logfile)
 	{
 		/*

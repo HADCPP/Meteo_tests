@@ -118,6 +118,7 @@ public:
 		void setQc_flags(float value, std::valarray<size_t> indices, int index){ m_qc_flags[index][indices] = value; }
 		void setQc_flags(std::valarray<float> qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
 		const std::vector<std::valarray<float>>& getQc_flags()const{ return m_qc_flags; }
+		const std::valarray<float>& getQc_flags(int v){ return m_qc_flags[v]; }
 		void setMetVar(CMetVar metvar, std::string var){ (m_Met_var)[var] = metvar; }
 		CMetVar& getMetvar(std::string var){ return m_Met_var[var]; }
 		void setTime_units(std::string units){ m_time.units = units; }

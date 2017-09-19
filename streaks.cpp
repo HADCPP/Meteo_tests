@@ -45,7 +45,7 @@ namespace INTERNAL_CHECKS
 		 
 	}
 	
-	void rsc_annual_string_expectance( CMaskedArray& all_filtered, const std::vector<int>& value_starts, const std::vector<int>& value_lengths, std::valarray<float>& flags, boost::gregorian::date  start, boost::gregorian::date end, CMetVar& st_var, std::vector<int> times)
+	void rsc_annual_string_expectance(CMaskedArray& all_filtered,  std::vector<int>& value_starts,  std::vector<int>& value_lengths, std::valarray<float>& flags, boost::gregorian::date  start, boost::gregorian::date end,CMetVar& st_var  ,const  std::vector<int> times)
 	{
 		vector<int> month_starts;
 		UTILS::month_starts(start, end,month_starts);  //  FONCTION RESHAPE
@@ -70,30 +70,83 @@ namespace INTERNAL_CHECKS
 		m_month_starts.push_back(month);
 
 		valarray < float > year_proportions(Cast<float>(st_var.getMdi()), m_month_starts.size());
-		valarray<float> year(all_filtered.size());
+		CMaskedArray year = CMaskedArray::CMaskedArray(Cast<float>(st_var.getMdi()),all_filtered.size());
 		// churn through each year in turn
 		for (int y = 0; y < m_month_starts.size(); y++)
 		{
 			if (y != m_month_starts.size() - 1)
-				year = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
+				year.data = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
 			else
-				year = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
+				year.data = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
+			if (year.compressed().size() >= 200)
+			{
+				valarray<size_t> string_starts(value_starts.size());
+				//if there are strings(streaks of same value) in this year
+				if (y != m_month_starts.size() - 1)
+					string_starts = npwhereAnd(value_starts, m_month_starts[y][0], m_month_starts[y + 1][0], ">=", "<");
+				else
+					string_starts = npwhere(value_starts, m_month_starts[y][0], ">=");
 
-			
+				year_proportions[y] = 0;
+				if (string_starts.size() >= 1)
+				{
+					std::valarray<float> dummy(value_lengths.size());
+					std::copy(value_lengths.begin(), value_lengths.end(), std::begin(dummy));
+					dummy = dummy[string_starts];
+					year_proportions[y] = dummy.sum() / float(year.compressed().size());
+				}
 
+			}
 		}
+		//if enough dirty years
+		valarray<size_t> good_years = npwhere(year_proportions, Cast<float>(st_var.getMdi()), "!");
+		
+		if (good_years.size() >= 10)
+		{
+			valarray<float> dummy = year_proportions[good_years];
+			float median = idl_median(dummy);
+			dummy.free();
+			if (median < 0.005) median = 0.005;
+			//find the number which have proportions > 5 x median
+			valarray<size_t> bad_years = npwhere(year_proportions, 5 * median, ">");
+			if (bad_years.size()>1)
+			{
+				valarray<size_t> locs(value_starts.size());
+				for (size_t bad : bad_years)
+				{
+					//and flag
+					if (bad == m_month_starts.size() - 1)
+					{
+						//if last year, just select all
+						locs = npwhere(value_starts, m_month_starts[bad][0], ">=");
+					}
+					else
+						locs = npwhereAnd(value_starts, m_month_starts[bad][0], m_month_starts[bad + 1][0], ">=", "<=");
+					for (size_t loc : locs)
+					{
+						//need to account for missing values here
+						valarray<bool> dummy = all_filtered.mask()[std::slice(value_starts[loc], all_filtered.mask().size() - value_starts[loc], 1)];
+						valarray<size_t> goods = npwhere(dummy, false, "=");
+						valarray<size_t> dum = goods[std::slice(0, value_lengths[loc], 1)];
+						dum += value_starts[loc];
+						flags[dum] = 1;
+					}
+				}
+			}
+		}			
 
 	}
 
-	void rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, map<float, float> WIND_MIN_VALUE, bool wind, float reporting, bool dynamic)
+	valarray<float> rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind, float reporting, bool dynamic)
 	{
 		float threshold;
+		
 		CMaskedArray all_filtered = apply_filter_flags(st_var);
 		if (st_var.getName() == "winddirs")
 		{
 			//remove calm periods for this check
 			CMetVar wd_st_var = st_var;
-			valarray<size_t> calms = npwhere(st_var.getData(), float(0), '=');  //True calms have direction set to 0, northerlies to 360
+			valarray<size_t> calms = npwhere(st_var.getData(), float(0), "=");  //True calms have direction set to 0, northerlies to 360
 			wd_st_var.setData(calms,Cast<float>( wd_st_var.getMdi()));
 
 			if (dynamic)
@@ -115,10 +168,10 @@ namespace INTERNAL_CHECKS
 		//Look for continuous straight strings
 
 		float prev_value = Cast<float>(st_var.getMdi());
-		vector<int> string_points;
-		//storage for excess over years
 		vector<int> values_starts;
 		vector<int> values_lengths;
+		vector<int> string_points;
+		//storage for excess over years
 
 		int o = 0;
 		for (float obs : all_filtered.data())
@@ -168,8 +221,9 @@ namespace INTERNAL_CHECKS
 			}
 			o++;
 		}
+		rsc_annual_string_expectance(all_filtered,values_starts, values_lengths, flags, start, end, st_var, times);
 
-
+		return flags;
 	}
 
 	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<vector<int>>  flag_col, boost::gregorian::date  start,
@@ -244,6 +298,15 @@ namespace INTERNAL_CHECKS
 
 				// need to apply flags to st_var.flags each time for filtering
 
+				
+				station.setQc_flags(rsc_straight_strings(st_var, times, limits[0], limits[1], start, end,WIND_MIN_VALUE, wind, reporting_resolution, true), flag_col[v][0]);
+				station.setQc_flags(rsc_straight_strings(st_var, times, limits[0], limits[1], start, end,WIND_MIN_VALUE, wind, reporting_resolution, true), flag_col[v][1]);
+
+				for (int streak_type = 0; streak_type < 3; ++streak_type)
+				{
+					//valarray<size_t> flag_locs = npwhere(station.getQc_flags(flag_col[v][streak_type]), float(0),"!");
+
+				}
 			}
 			v++;
 		}

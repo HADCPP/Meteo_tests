@@ -16,7 +16,13 @@ public:
 		m_mask = false;
 	}
 		
-	
+	CMaskedArray::CMaskedArray(float data,size_t  size)
+	{
+		m_fill_value = float(1e20);
+		m_data.resize(size);
+		m_data = data;
+		m_mask = false;
+	}
 
 	float fill_value(){ return m_fill_value; }
 	std::valarray<float> data(){ return m_data; }
@@ -126,44 +132,231 @@ namespace PYTHON_FUNCTION
 		return vec;
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(std::valarray<T> v1, T value,char condition)
+	inline std::valarray<std::size_t> npwhere(std::valarray<T>& v1, T value,const std::string condition)
 	{
 		
-			std::vector<size_t> index;
-			switch (condition)
+		std::vector<size_t> index;
+		switch (condition)
+		{
+		case "=":
+			for (size_t i = 0; i < v1.size(); i++)
 			{
-			case '=':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] == value) index.push_back(i);
-				}
-				break;
-			case '!':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] != value) index.push_back(i);
-				}
-				break;
-			case '<':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] < value) index.push_back(i);
-				}
-				break;
-			case '>':
-				for (size_t i = 0; i < v1.size(); i++)
-				{
-					if (v1[i] > value) index.push_back(i);
-				}
-				break;
-			default:
-				break;
+				if (v1[i] == value) index.push_back(i);
 			}
+			break;
+		case "!":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] != value) index.push_back(i);
+			}
+			break;
+		case "<=":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] <= value) index.push_back(i);
+			}
+			break;
+		case "<":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] < value) index.push_back(i);
+			}
+			break;
+		case ">":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] > value) index.push_back(i);
+			}
+			break;
+		case ">=":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] >= value) index.push_back(i);
+			}
+			break;
+		default:
+			break;
+		}
 			std::valarray<std::size_t> vec(index.size());
 			std::copy(index.begin(), index.end(), std::begin(vec));
 			return vec;
 		
 		
+	}
+	template<typename T>
+	inline std::valarray<std::size_t> npwhere(std::vector<T> v1, T value, const std::string condition)
+	{
+
+		std::vector<size_t> index;
+		switch (condition)
+		{
+		case "=":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] == value) index.push_back(i);
+			}
+			break;
+		case "!":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] != value) index.push_back(i);
+			}
+			break;
+		case "<=":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] <= value) index.push_back(i);
+			}
+			break;
+		case "<":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] < value) index.push_back(i);
+			}
+			break;
+		case ">":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] > value) index.push_back(i);
+			}
+			break;
+		case ">=":
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] >= value) index.push_back(i);
+			}
+			break;
+		default:
+			break;
+		}
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
+	}
+	template<typename T>
+	inline std::valarray<std::size_t> npwhereAnd(std::vector<T> v1, T value, T value2, const std::string condition1, const std::string condition2)
+	{
+
+		std::vector<size_t> index;
+		if (condition1 == '<=')
+		{
+			if (condition2 == '>')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] <= value && v1[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<')
+		{
+			if (condition2 == '>')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value && v1[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<')
+		{
+			if (condition2 == '>=')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value && v1[i] >= value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<=')
+		{
+			if (condition2 == '>=')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value && v1[i] >= value2) index.push_back(i);
+				}
+		}
+
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
+	}
+	template<typename T>
+	inline std::valarray<std::size_t> npwhereAnd(std::valarray<T> v1, T value, T value2, const std::string condition1, const std::string condition2)
+	{
+
+		std::vector<size_t> index;
+		if (condition1 == '<=')
+		{
+			if (condition2 == '>')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] <= value && v1[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<')
+		{
+			if (condition2 == '>')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value && v1[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<')
+		{
+			if (condition2 == '>=')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value && v1[i] >= value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<=')
+		{
+			if (condition2 == '>=')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value && v1[i] >= value2) index.push_back(i);
+				}
+		}
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
+	}
+	template<typename T>
+	inline std::valarray<std::size_t> npwhereOr(std::valarray<T> v1, T value, T value2, cconst std::string condition1, const std::string condition2)
+	{
+
+		std::vector<size_t> index;
+		if (condition1 == '<=')
+		{
+			if (condition2 == '>')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] <= value || v1[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<')
+		{
+			if (condition2 == '>')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value || v1[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == '<')
+		{
+			if (condition2 == '>=')
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value || v1[i] >= value2) index.push_back(i);
+				}
+		}
+
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
 	}
 	template<typename T>
 	inline std::valarray<std::size_t> npwhere( CMaskedArray& v1, T value, char condition)

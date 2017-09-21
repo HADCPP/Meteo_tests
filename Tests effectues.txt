@@ -4,7 +4,7 @@ frequent  	 ousmane
 diurnal  	 ousmane
 gap          Remi
 records   ousmane
-streaks  
+streaks  ousmane
 climatological  
 spike  
 humidity  

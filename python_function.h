@@ -45,6 +45,15 @@ public:
 	{
 		return m_data.size();
 	}
+	void resize(size_t val)
+	{
+		m_data.resize(val);
+		m_mask.resize(val);
+	}
+	float operator[](int indice)
+	{
+		return m_data[indice];
+	}
 protected:
 
 	float m_fill_value;
@@ -53,6 +62,7 @@ protected:
 	std::vector<size_t> m_masked_indices;
 	
 };
+
 
 
 namespace PYTHON_FUNCTION
@@ -136,47 +146,41 @@ namespace PYTHON_FUNCTION
 	{
 		
 		std::vector<size_t> index;
-		switch (condition)
-		{
-		case "=":
+		if(condition== "=")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] == value) index.push_back(i);
 			}
-			break;
-		case "!":
+			
+		if (condition == "!")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] != value) index.push_back(i);
 			}
-			break;
-		case "<=":
+		
+		if (condition == "<=")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] <= value) index.push_back(i);
 			}
-			break;
-		case "<":
+			
+		if(condition=="<")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] < value) index.push_back(i);
 			}
-			break;
-		case ">":
+			
+		if(condition==">")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] > value) index.push_back(i);
 			}
-			break;
-		case ">=":
+			
+		if(condition==">=")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] >= value) index.push_back(i);
 			}
-			break;
-		default:
-			break;
-		}
 			std::valarray<std::size_t> vec(index.size());
 			std::copy(index.begin(), index.end(), std::begin(vec));
 			return vec;
@@ -188,47 +192,136 @@ namespace PYTHON_FUNCTION
 	{
 
 		std::vector<size_t> index;
-		switch (condition)
-		{
-		case "=":
+	
+		if (condition == "=")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] == value) index.push_back(i);
 			}
-			break;
-		case "!":
+
+		if (condition == "!")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] != value) index.push_back(i);
 			}
-			break;
-		case "<=":
+
+		if (condition == "<=")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] <= value) index.push_back(i);
 			}
-			break;
-		case "<":
+
+		if (condition == "<")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] < value) index.push_back(i);
 			}
-			break;
-		case ">":
+
+		if (condition == ">")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] > value) index.push_back(i);
 			}
-			break;
-		case ">=":
+
+		if (condition == ">=")
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] >= value) index.push_back(i);
 			}
-			break;
-		default:
-			break;
-		}
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
+	}
+	template<typename T>
+	inline std::valarray<std::size_t> npwhere(std::vector<T> v1, std::vector<T> v2, const std::string condition)
+	{
+
+		std::vector<size_t> index;
+	
+		if (condition == "=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] == v2[i]) index.push_back(i);
+			}
+
+		if (condition == "!")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] != v2[i]) index.push_back(i);
+			}
+
+		if (condition == "<=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] <= v2[i]) index.push_back(i);
+			}
+
+		if (condition == "<")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] < v2[i]) index.push_back(i);
+			}
+
+		if (condition == ">")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] > v2[i]) index.push_back(i);
+			}
+
+		if (condition == ">=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] >= v2[i]) index.push_back(i);
+			}
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
+	}
+	template<typename T>
+	inline std::valarray<std::size_t> npwhere(std::valarray<T> v1, std::valarray<T> v2, const std::string condition)
+	{
+
+		
+		std::vector<size_t> index;
+		if (condition == "=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] == v2[i]) index.push_back(i);
+			}
+
+		if (condition == "!")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] != v2[i]) index.push_back(i);
+			}
+
+		if (condition == "<=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] <= v2[i]) index.push_back(i);
+			}
+
+		if (condition == "<")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] < v2[i]) index.push_back(i);
+			}
+
+		if (condition == ">")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] > v2[i]) index.push_back(i);
+			}
+
+		if (condition == ">=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] >= v2[i]) index.push_back(i);
+			}
 		std::valarray<std::size_t> vec(index.size());
 		std::copy(index.begin(), index.end(), std::begin(vec));
 		return vec;
@@ -240,33 +333,33 @@ namespace PYTHON_FUNCTION
 	{
 
 		std::vector<size_t> index;
-		if (condition1 == '<=')
+		if (condition1 == "<=")
 		{
-			if (condition2 == '>')
+			if (condition2 == ">")
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] <= value && v1[i]> value2) index.push_back(i);
 				}
 		}
-		if (condition1 == '<')
+		if (condition1 == "<")
 		{
-			if (condition2 == '>')
+			if (condition2 == ">")
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] < value && v1[i]> value2) index.push_back(i);
 				}
 		}
-		if (condition1 == '<')
+		if (condition1 == "<")
 		{
-			if (condition2 == '>=')
+			if (condition2 == ">=")
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] < value && v1[i] >= value2) index.push_back(i);
 				}
 		}
-		if (condition1 == '<=')
+		if (condition1 == "<=")
 		{
-			if (condition2 == '>=')
+			if (condition2 == ">=")
 				for (size_t i = 0; i < v1.size(); i++)
 				{
 					if (v1[i] < value && v1[i] >= value2) index.push_back(i);
@@ -323,7 +416,7 @@ namespace PYTHON_FUNCTION
 
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhereOr(std::valarray<T> v1, T value, T value2, cconst std::string condition1, const std::string condition2)
+	inline std::valarray<std::size_t> npwhereOr(std::valarray<T> v1, T value, T value2, const std::string condition1, const std::string condition2)
 	{
 
 		std::vector<size_t> index;
@@ -564,5 +657,84 @@ namespace PYTHON_FUNCTION
 			ceil_value.push_back(T(std::ceilf(value)));
 
 		return ceil_value;
+	}
+
+	template<typename T>
+	inline std::vector<std::valarray<T>> reshape(std::vector<T> data,size_t col)
+	{
+		std::vector<valarray<T>> m_data;
+		int iteration = 1;
+		std::valarray<T> month(col);
+		for (int i : data)
+		{
+			if (iteration <= col)
+			{
+				month[iteration - 1] = i;
+				iteration++;
+			}
+			else
+			{
+				m_data.push_back(month);
+				month.resize(col);
+				month[0] = i;
+				iteration = 2;
+			}
+		}
+		m_data.push_back(month);
+
+		return m_data;
+	}
+
+	template<typename T>
+	inline std::vector<std::valarray<T>> reshape(std::valarray<T> data, size_t col)
+	{
+		std::vector<std::valarray<T>> m_data;
+		int iteration = 1;
+		std::valarray<T> month(col);
+		for (int i : data)
+		{
+			if (iteration <= col)
+			{
+				month[iteration - 1] = i;
+				iteration++;
+			}
+			else
+			{
+				m_data.push_back(month);
+				month.resize(col);
+				month[0] = i;
+				iteration = 2;
+			}
+		}
+		m_data.push_back(month);
+
+		return m_data;
+	}
+	
+	inline std::vector<CMaskedArray> reshape(CMaskedArray a_data, size_t col)
+	{
+		std::vector<CMaskedArray> m_data;
+		int iteration = 1;
+		CMaskedArray dummy= CMaskedArray::CMaskedArray(0.,col);
+		for (size_t i = 0; i < a_data.size();++i)
+		{
+			if (iteration <= col)
+			{
+				dummy.data()[iteration - 1] = a_data.data()[i];
+				dummy.mask()[iteration - 1] = a_data.mask()[i];
+				iteration++;
+			}
+			else
+			{
+				m_data.push_back(dummy);
+				dummy.resize(col);
+				dummy.data()[0] = a_data.data()[i];
+				dummy.mask()[0] = a_data.mask()[i];
+				iteration = 2;
+			}
+		}
+		m_data.push_back(dummy);
+
+		return m_data;
 	}
 }

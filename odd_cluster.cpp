@@ -213,7 +213,7 @@ namespace INTERNAL_CHECKS
 				
 			}
 			station.setQc_flags(var_flags, v);
-			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], 0, '!');
+			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], float(0), "!");
 			UTILS::print_flagged_obs_number(logfile, "Odd Cluster", variable, flag_locs.size() - prev_flag_number);
 			//copy flags into attribute
 			st_var.setFlags(flag_locs, float(1));

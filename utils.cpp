@@ -368,9 +368,9 @@ namespace UTILS
 				int limit = 0;
 				while (limit < 2)
 				{
-					if (npwhere<float>(full_hist, 0., '=').size()>0)
+					if (npwhere<float>(full_hist, float(0.), "=").size()>0)
 					{
-						limit = npwhere<float>(full_hist,0.,'=')[i];  //where instead of argwhere??
+						limit = npwhere<float>(full_hist,0.,"=")[i];  //where instead of argwhere??
 						i++;
 					}
 					else
@@ -412,11 +412,11 @@ namespace UTILS
 				{
 					//in case the fit has a positive slope
 					//where does fit fall below log10(-0.1)
-					if (npwhere<float>(fit_curve, float(-1), '<').size()>0)
+					if (npwhere<float>(fit_curve, float(-1), "<").size()>0)
 					{
-						size_t fit_below_point1 = npwhere<float>(fit_curve, float(-1), '<')[0];
+						size_t fit_below_point1 = npwhere<float>(fit_curve, float(-1), "<")[0];
 						valarray<float> dummy = full_hist[slice(fit_below_point1, full_hist.size() - fit_below_point1, 1)];
-						size_t first_zero_bin = npwhere<float>(dummy, 0, '=')[0] + 1;
+						size_t first_zero_bin = npwhere<float>(dummy, 0, "=")[0] + 1;
 						threshold = binwidth*(fit_below_point1 + first_zero_bin);
 					}
 					else

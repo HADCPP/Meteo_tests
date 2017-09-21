@@ -124,7 +124,7 @@ namespace INTERNAL_CHECKS
 			valarray<int> best_fits(-9, 6);
 			for (int h = 0; h < 6; h++)
 			{
-				valarray<size_t> locs = PYTHON_FUNCTION::npwhere<int>(diurnal_uncertainties, h + 1,'=');
+				valarray<size_t> locs = PYTHON_FUNCTION::npwhere<int>(diurnal_uncertainties, h + 1,"=");
 				if (locs.size() > 300)
 				{
 					valarray<int> fits=diurnal_best_fits[locs];
@@ -148,7 +148,7 @@ namespace INTERNAL_CHECKS
 						hour_matches[slice(11 - (h + 1), 2 * h + 4, 1)] = 1;
 						number_estimates += 1;
 					}
-					valarray<size_t> centre = PYTHON_FUNCTION::npwhere<int>(hours, best_fits[h], '=');
+					valarray<size_t> centre = PYTHON_FUNCTION::npwhere<int>(hours, best_fits[h], "=");
 					if ((centre[0] - h + 1) >= 0)
 					{
 						if ((centre[0] + h + 1) <= 23)
@@ -186,7 +186,7 @@ namespace INTERNAL_CHECKS
 			//If value at lowest uncertainty not found in all others, then see what value is found by all others
 			if (hour_matches[11] != number_estimates)
 			{
-				valarray<size_t> all_match = PYTHON_FUNCTION::npwhere<int>(hour_matches ,number_estimates, '=');
+				valarray<size_t> all_match = PYTHON_FUNCTION::npwhere<int>(hour_matches ,number_estimates, "=");
 				//if one is, then use it
 				if (all_match.size() > 0)
 					diurnal_peak = all_match[0];
@@ -207,7 +207,7 @@ namespace INTERNAL_CHECKS
 							rather than seeing if each day falls in global value + / -range'''*/
 						int min_range = 11 - diurnal_uncertainties[d];
 						int max_range = 11 + diurnal_uncertainties[d];
-						int maxloc = (PYTHON_FUNCTION::npwhere<int>(hours, diurnal_best_fits[d], '='))[0];
+						int maxloc = (PYTHON_FUNCTION::npwhere<int>(hours, diurnal_best_fits[d], "="))[0];
 
 						if (maxloc < min_range || maxloc > max_range)
 							potentially_spurious[d] = 1;

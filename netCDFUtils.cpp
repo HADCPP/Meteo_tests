@@ -566,7 +566,7 @@ namespace NETCDFUTILS
 				int v = 0;
 				for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); ++var,v++)
 				{
-					valarray<float> report(reporting[v]);
+					valarray<float> report{ reporting[v] };
 					station.getMetvar(*var).setReportingStats(report);
 				}
 				delete[] reporting;

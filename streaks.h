@@ -50,7 +50,26 @@ namespace INTERNAL_CHECKS
     :param bool wind: whether there is wind data to account for - extra minimum value
     :param bool dynamic: calculate threshold of number of observations dynamically rather than using n_obs
 	*/
-	valarray<float> rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind = false, float reporting = 0., bool dynamic = true);
+	std::valarray<float> rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind = false, float reporting = 0., bool dynamic = true);
+	
+
+	/*
+	Look through for repeats of full 24h of data
+     :param array data: data to process
+    :param int n_wday: number of whole days to exceed
+    :param MetVar st_var: station variable - mainly for plotting
+    */
+	void rsc_whole_day_repeats(std::vector<CMaskedArray>& data, int n_wday, std::valarray<float>& flags);
+	
+	/*
+	Repeat of same value at given hour for >N days
+	:param object st_var: station variable object
+	:param array times: timestamps
+	:param int n_hrs: number of hours to exceed
+	:param int n_wday: number of whole days to exceed (passed on)
+
+	*/
+	std::valarray<float> rsc_hourly_repeats(CMetVar& st_var, std::vector<int>& times, int n_hrs, int n_wdays, std::valarray<float>& flags);
 
 	/*
 	Find years where have more strings than expected, but not long enough to set off test

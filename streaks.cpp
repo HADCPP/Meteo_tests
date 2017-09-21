@@ -49,35 +49,16 @@ namespace INTERNAL_CHECKS
 	{
 		vector<int> month_starts;
 		UTILS::month_starts(start, end,month_starts);  //  FONCTION RESHAPE
-		vector<valarray<int>> m_month_starts;
-		int iteration = 1;
-		valarray<int> month(12);
-		for (int i : month_starts)
-		{
-			if (iteration <= 12)
-			{
-				month[iteration-1]=i;
-				iteration++;
-			}
-			else
-			{
-				m_month_starts.push_back(month);
-				month.resize(12);
-				month[0] = i;
-				iteration = 2;
-			}
-		}
-		m_month_starts.push_back(month);
-
+		vector<valarray<int>> m_month_starts = reshape(month_starts, 12);
 		valarray < float > year_proportions(Cast<float>(st_var.getMdi()), m_month_starts.size());
 		CMaskedArray year = CMaskedArray::CMaskedArray(Cast<float>(st_var.getMdi()),all_filtered.size());
 		// churn through each year in turn
 		for (int y = 0; y < m_month_starts.size(); y++)
 		{
 			if (y != m_month_starts.size() - 1)
-				year.data = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
+				year.data() = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
 			else
-				year.data = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
+				year.data() = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
 			if (year.compressed().size() >= 200)
 			{
 				valarray<size_t> string_starts(value_starts.size());
@@ -226,6 +207,98 @@ namespace INTERNAL_CHECKS
 		return flags;
 	}
 
+	void rsc_whole_day_repeats(vector<CMaskedArray>& data, int n_wday, valarray<float>& day_flags)
+	{
+		
+		valarray<valarray<float>> flags(data[0].data(), data.size());
+		vector<int > ndays;
+		int nday;
+		valarray<float> prev_day(data[0].size());
+		for (int day = 0; day < data[0].size(); ++day)
+		{
+			if (day == 0)
+			{
+				prev_day = data[day].data();
+				nday = 1;
+				continue;
+			}
+			else
+			{
+				valarray<size_t> matches = npwhere(prev_day, data[day].data(), "=");
+				//if this day matches previous one(not IDL wording, but matches logic)
+				if (matches.size() == 24)
+				{
+					if (nday >= n_wday)
+					{
+						if (data[day].compressed().size()>0)
+						{
+							//if above threshold and not because all values are missing, flag
+							for (int i = day - nday; i < day; ++i)
+								flags[i] = 1.;
+						}
+					}
+				}
+				else
+				{
+					ndays.push_back(nday);
+					prev_day = data[day].data();
+					nday = 1;
+				}
+				nday++;
+			}
+		}
+
+		for (size_t i = 0; i < flags.size(); ++i)
+			for (size_t j = 0; j < 24; j++)
+			{
+				day_flags[i + j] = flags[i][j];
+			}
+
+	}
+
+	valarray<float> rsc_hourly_repeats(CMetVar& st_var, std::vector<int>& times, int n_hrs, int n_wday, valarray<float>& flags)
+	{
+		
+		CMaskedArray hourly_data = apply_filter_flags(st_var);
+		vector<CMaskedArray> h_hourly_data = reshape(hourly_data, 24);
+		vector<valarray<int>> hourly_times = reshape(times, 24);
+
+		for (size_t hour = 0; hour < 24; hour++)
+		{
+			float match_values = -999.;
+			vector<int> match_times, len_matches;
+
+			for (int day = 0; day < h_hourly_data.size(); ++day)
+			{
+				//for each day at each given hour
+				if (h_hourly_data[day].mask()[hour] == false)
+				{
+					if (h_hourly_data[day][hour] != match_values)
+					{
+						//if different value, check if string/streak above threshold
+						if (match_times.size() > n_hrs)
+						{
+							valarray<size_t> bad = npwhere(match_times, times, "=");
+							flags[bad] = 1;
+						}
+					}
+					len_matches.push_back(match_times.size());
+					match_values = h_hourly_data[day][hour];
+					match_times.clear();
+					match_times.push_back(hourly_times[day][hour]);
+				}
+				else
+				{
+					//if same value
+					match_times.push_back(hourly_times[day][hour]);
+				}
+			}
+		}
+		valarray<float> day_flags(h_hourly_data.size());
+		rsc_whole_day_repeats(h_hourly_data, n_wday, day_flags);
+		return day_flags;
+			
+	}
 	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<vector<int>>  flag_col, boost::gregorian::date  start,
 		boost::gregorian::date end, std::ofstream& logfile)
 	{
@@ -297,19 +370,26 @@ namespace INTERNAL_CHECKS
 				array<int,4> limits = limits_dict[variable][reporting_resolution];
 
 				// need to apply flags to st_var.flags each time for filtering
-
-				
+								
 				station.setQc_flags(rsc_straight_strings(st_var, times, limits[0], limits[1], start, end,WIND_MIN_VALUE, wind, reporting_resolution, true), flag_col[v][0]);
-				station.setQc_flags(rsc_straight_strings(st_var, times, limits[0], limits[1], start, end,WIND_MIN_VALUE, wind, reporting_resolution, true), flag_col[v][1]);
+				valarray<float> flags(st_var.getData().size()), day_flags(st_var.getData().size());
+				day_flags = rsc_hourly_repeats(st_var, times, limits[2], limits[3], flags);
+				station.setQc_flags(flags, flag_col[v][1]);
+				station.setQc_flags(day_flags, flag_col[v][2]);
 
 				for (int streak_type = 0; streak_type < 3; ++streak_type)
 				{
-					//valarray<size_t> flag_locs = npwhere(station.getQc_flags(flag_col[v][streak_type]), float(0),"!");
+					valarray<size_t> flag_locs = npwhere(station.getQc_flags(flag_col[v][streak_type]), float(0),"!");
 
+					print_flagged_obs_number(logfile, "Streak Check", variable, flag_locs.size());
+
+					//copy flags into attribute
+					st_var.setFlags(flag_locs, 1.);
 				}
 			}
 			v++;
 		}
+		append_history(station, "Streak Check");
 	}
 }
 

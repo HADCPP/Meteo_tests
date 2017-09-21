@@ -10,6 +10,7 @@
 #include "frequent_values.h"
 #include "odd_cluster.h"
 #include "records.h"
+#include "streaks.h"
 
 #include <vector>
 #include <ctime>
@@ -162,6 +163,13 @@ namespace INTERNAL_CHECKS
 				UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.streaks)
+			{
+				rsc(station, { "temperatures", "dewpoints", "windspeeds", "slp", "winddirs" }, { { 12, 16, 20 }, { 13, 17, 21 }, { 14, 18, 22 }, { 15, 19, 23 }, { 66, 67, 68 } },
+					DATESTART, DATEEND,logfile);
+				UTILS::apply_windspeed_flags_to_winddir(station);
+
+			}
+			if (mytest.climatological)
 			{
 
 			}

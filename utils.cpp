@@ -437,4 +437,37 @@ namespace UTILS
 
 		return threshold;
 	}
+
+	//Sum up a single month across all years(e.g.all Januaries)
+	void  concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, std::valarray<float>& data, std::vector<CMaskedArray>& this_month,
+		std::vector<int>& year_ids, std::valarray<float> datacount, float missing_value, bool hours)
+	{
+
+
+		int y = 0;
+		for (pair<int, int> year : month_ranges)
+		{
+
+			valarray<float> dummy = data[slice(month_ranges[y].first, month_ranges[y].second - month_ranges[y].first + 1, 1)];
+			CMaskedArray this_year = CMaskedArray::CMaskedArray(missing_value, dummy);
+			datacount[y] = this_year.compressed().size();
+
+			if (y == 0)
+			{
+				//store so can access each hour of day separately
+				if (hours)
+					this_month = reshape(this_year, 24);
+				for (int i = 0; i < this_month.size(); ++i)
+					year_ids.push_back(y);
+			}
+			else
+			{
+				;//if (hours)
+
+			}
+
+		}
+	}
+
+
 }

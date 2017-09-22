@@ -150,6 +150,7 @@
     </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="climatological.cpp" />
     <ClCompile Include="distributional_gap.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -167,6 +168,7 @@
     <ClCompile Include="utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="climatological.h" />
     <ClInclude Include="Diurnal_cycle.h" />
     <ClInclude Include="duplicate_months.h" />
     <ClInclude Include="frequent_values.h" />

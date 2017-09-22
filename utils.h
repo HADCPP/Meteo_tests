@@ -76,4 +76,9 @@ namespace UTILS
 		:returns:   threshold value
 	   */
 	float get_critical_values(std::vector<int> indata, int binmin = 0, int binwidth = 1, float old_threshold = 0.);
+
+	//Sum up a single month across all years(e.g.all Januaries)
+	void concatenate_months(std::valarray<std::pair<int, int>> month_ranges, std::valarray<float> data, std::vector<CMaskedArray>& this_month,
+		std::vector<int>& year_ids, std::valarray<float> datacount, float missing_value, bool hours = true);
+	
 }

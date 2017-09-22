@@ -15,7 +15,13 @@ public:
 		m_data = data;
 		m_mask = false;
 	}
-		
+	CMaskedArray::CMaskedArray(float missing_value,std::valarray<float> data)
+	{
+		m_fill_value = float(1e20);
+		m_data = data;
+		for (size_t i = 0; i < data.size();++i)
+			if (data[i]==missing_value) m_mask[i] = true;
+	}
 	CMaskedArray::CMaskedArray(float data,size_t  size)
 	{
 		m_fill_value = float(1e20);

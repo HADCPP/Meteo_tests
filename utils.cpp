@@ -467,7 +467,7 @@ namespace UTILS
 			{
 				if (hours)
 				{
-					std::vector<CMaskedArray> t_years = C_reshape(this_year, 24);
+					std::vector<CMaskedArray> t_years = L_reshape(this_year, 24);
 					std::copy(t_years.begin(), t_years.end(), std::back_inserter(this_month));
 				}
 				else

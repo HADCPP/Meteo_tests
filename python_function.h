@@ -29,8 +29,43 @@ public:
 		m_data = data;
 		m_mask = false;
 	}
-
+	CMaskedArray::CMaskedArray(CMaskedArray const& mask_array_copy)
+	{
+		m_fill_value = mask_array_copy.m_fill_value;
+		m_data = mask_array_copy.m_data;
+		m_mask = mask_array_copy.m_mask;
+		m_masked_indices = mask_array_copy.m_masked_indices;
+	}
+	CMaskedArray& CMaskedArray::operator=(CMaskedArray const& mask_array_copy)
+	{
+		if (this != &mask_array_copy)
+		{
+			m_fill_value = mask_array_copy.m_fill_value;
+			m_data = mask_array_copy.m_data;
+			m_mask = mask_array_copy.m_mask;
+			m_masked_indices = mask_array_copy.m_masked_indices;
+		}
+		return *this;
+	}
 	float fill_value(){ return m_fill_value; }
+	float ma_sum()
+	{
+		float sum = 0;
+		for (int i = 0; i < m_data.size(); ++i)
+		{
+			if (!m_mask[i]) sum += m_data[i];
+		}
+		return sum;
+	}
+	float ma_mean()
+	{
+		float sum = 0;
+		for (int i = 0; i < m_data.size(); ++i)
+		{
+			if (!m_mask[i]) sum += m_data[i];
+		}
+		return sum/m_data.size();
+	}
 	std::valarray<float> data(){ return m_data; }
 	std::valarray<bool>	mask(){ return m_mask; }
 
@@ -60,6 +95,8 @@ public:
 	{
 		return m_data[indice];
 	}
+	
+	
 protected:
 
 	float m_fill_value;
@@ -666,7 +703,7 @@ namespace PYTHON_FUNCTION
 	}
 
 	template<typename T>
-	inline std::vector<std::valarray<T>> reshape(std::vector<T> data,size_t col)
+	inline std::vector<std::valarray<T>> C_reshape(std::vector<T> data,size_t col)
 	{
 		std::vector<valarray<T>> m_data;
 		int iteration = 1;
@@ -692,7 +729,7 @@ namespace PYTHON_FUNCTION
 	}
 
 	template<typename T>
-	inline std::vector<std::valarray<T>> reshape(std::valarray<T> data, size_t col)
+	inline std::vector<std::valarray<T>> C_reshape(std::valarray<T> data, size_t col)
 	{
 		std::vector<std::valarray<T>> m_data;
 		int iteration = 1;
@@ -717,7 +754,7 @@ namespace PYTHON_FUNCTION
 		return m_data;
 	}
 	
-	inline std::vector<CMaskedArray> reshape(CMaskedArray a_data, size_t col)
+	inline std::vector<CMaskedArray> C_reshape(CMaskedArray a_data, size_t col)
 	{
 		std::vector<CMaskedArray> m_data;
 		int iteration = 1;
@@ -742,5 +779,122 @@ namespace PYTHON_FUNCTION
 		m_data.push_back(dummy);
 
 		return m_data;
+	}
+
+	template<typename T>
+	inline std::vector<std::valarray<T>> L_reshape(std::vector<T> data, size_t line)
+	{
+
+		std::vector<std::valarray<T>> m_data;
+		int col = int(data.size() / line);
+		std::valarray<T> month(col);
+		int index = 0;
+		int compteur = 0;
+		int iteration = 1;
+
+		for (int i = 0; i < data.size(); i += line)
+		{
+			if (iteration <= col && i < data.size() && compteur<line)
+			{
+				month[index++] = data[i];
+				iteration++;
+			}
+			else
+			{
+				if (compteur == line) break;
+				m_data.push_back(month);
+				compteur++;
+				month.resize(col);
+				index = 0;
+				i = m_data.size();
+				month[index++] = data[i];
+				iteration = 2;
+			}
+			if (i + line >= data.size() && compteur<line)
+			{
+				i = m_data.size();
+			}
+
+		}
+
+		return m_data;
+	}
+
+	template<typename T>
+	inline std::vector<std::valarray<T>> L_reshape(std::valarray<T> data, size_t line)
+	{
+		std::vector<std::valarray<T> m_data;
+		int col = int(data.size() / line);
+		std::valarray<T> month(col);
+		int index = 0;
+		int compteur = 0;
+		int iteration = 1;
+
+		for (int i = 0; i < month_ranges.size(); i += line)
+		{
+			if (iteration <= coi && i < data.size() && compteur<line)
+			{
+				month[index++] = data[i];
+				iteration++;
+			}
+			else
+			{
+				if (compteur == line) break;
+				m_data.push_back(month);
+				compteur++;
+				month.resize(col);
+				index = 0;
+				i = m_data.size();
+				month[index++] = data[i];
+				iteration = 2;
+			}
+			if (i + line >= data.size() && compteur<line)
+			{
+				i = m_data.size();
+			}
+
+		}
+
+		return m_data;
+	}
+
+	inline std::vector<CMaskedArray> L_reshape(CMaskedArray a_data, size_t line)
+	{
+		std::vector<CMaskedArray> m_data;
+		int col = int(a_data.size() / line);
+		CMaskedArray month = CMaskedArray::CMaskedArray(0,col);
+		int index = 0;
+		int compteur = 0;
+		int iteration = 1;
+
+		for (int i = 0; i < a_data.size(); i += line)
+		{
+			if (iteration <= col && i < a_data.size() && compteur<line)
+			{
+				month.data()[index] = a_data[i];
+				month.mask()[index++] = a_data.mask()[i];
+				iteration++;
+			}
+			else
+			{
+				if (compteur == line) break;
+				m_data.push_back(month);
+				compteur++;
+				month.resize(col);
+				index = 0;
+				i = m_data.size();
+				month.data()[index] = a_data[i];
+				month.mask()[index++] = a_data.mask()[i];
+				iteration = 2;
+			}
+			if (i + line >= a_data.size() && compteur<line)
+			{
+				i = m_data.size();
+			}
+
+		}
+
+		return m_data;
+
 	}
 }

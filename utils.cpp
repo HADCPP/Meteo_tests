@@ -439,13 +439,14 @@ namespace UTILS
 	}
 
 	//Sum up a single month across all years(e.g.all Januaries)
+	//return this_month, year_ids, datacount
+
 	void  concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, std::valarray<float>& data, std::vector<CMaskedArray>& this_month,
-		std::vector<int>& year_ids, std::valarray<float> datacount, float missing_value, bool hours)
+		std::vector<int>& year_ids, std::valarray<float>& datacount, float missing_value, bool hours)
 	{
 
-
-		int y = 0;
-		for (pair<int, int> year : month_ranges)
+		
+		for (size_t y = 0; y < month_ranges.size();y++)
 		{
 
 			valarray<float> dummy = data[slice(month_ranges[y].first, month_ranges[y].second - month_ranges[y].first + 1, 1)];
@@ -456,18 +457,74 @@ namespace UTILS
 			{
 				//store so can access each hour of day separately
 				if (hours)
-					this_month = reshape(this_year, 24);
+					this_month = L_reshape(this_year, 24);
+				else
+					this_month.push_back(this_year);
 				for (int i = 0; i < this_month.size(); ++i)
 					year_ids.push_back(y);
 			}
 			else
 			{
-				;//if (hours)
-
+				if (hours)
+				{
+					std::vector<CMaskedArray> t_years = C_reshape(this_year, 24);
+					std::copy(t_years.begin(), t_years.end(), std::back_inserter(this_month));
+				}
+				else
+					this_month.push_back(this_year);
+				for (int i = 0; i < this_month.size(); ++i)
+					year_ids.push_back(y);
 			}
+			
+		}
+	}
+
+	//''' Calculate the percentile of data '''
+	inline float percentiles(std::valarray<float>& data, float percent, bool idl)
+	{
+		valarray<float> sorted_data(data);
+		std::sort(std::begin(sorted_data), std::end(sorted_data));
+		int n_data;
+		float percentile;
+		if (idl)
+		{
+			n_data = data.size() - 1;
+			percentile = sorted_data[int(ceil(n_data * percent))]; // matches IDL formulation
+		}
+		else
+		{
+			n_data = data.size();
+			percentile = sorted_data[int(n_data * percent)];
+		}
+
+		return percentile;
+	}
+		
+
+
+	void winsorize(std::valarray<float>& data, float percent, bool idl )
+	{
+		for (float pct : { percent, 1 - percent })
+		{
+			float percentile;
+			valarray<size_t> locs(data.size());
+			if (pct < 0.5)
+			{
+				percentile = percentiles(data, pct, idl );
+				locs = npwhere(data, percentile, "<");
+			}
+			else
+			{
+				percentile = percentiles(data, pct, idl);
+				locs = npwhere(data, percentile, ">");
+			}
+			data[locs] = percentile;
 
 		}
 	}
+
+
+		
 
 
 }

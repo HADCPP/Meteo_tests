@@ -49,7 +49,7 @@ namespace INTERNAL_CHECKS
 	{
 		vector<int> month_starts;
 		UTILS::month_starts(start, end,month_starts);  //  FONCTION RESHAPE
-		vector<valarray<int>> m_month_starts = reshape(month_starts, 12);
+		vector<valarray<int>> m_month_starts = L_reshape(month_starts, 12);
 		valarray < float > year_proportions(Cast<float>(st_var.getMdi()), m_month_starts.size());
 		CMaskedArray year = CMaskedArray::CMaskedArray(Cast<float>(st_var.getMdi()),all_filtered.size());
 		// churn through each year in turn
@@ -260,8 +260,8 @@ namespace INTERNAL_CHECKS
 	{
 		
 		CMaskedArray hourly_data = apply_filter_flags(st_var);
-		vector<CMaskedArray> h_hourly_data = reshape(hourly_data, 24);
-		vector<valarray<int>> hourly_times = reshape(times, 24);
+		vector<CMaskedArray> h_hourly_data = L_reshape(hourly_data, 24);
+		vector<valarray<int>> hourly_times = L_reshape(times, 24);
 
 		for (size_t hour = 0; hour < 24; hour++)
 		{

@@ -5,8 +5,8 @@ diurnal  	 ousmane
 gap          Remi
 records   ousmane
 streaks  ousmane
-climatological  
-spike  
+climatological ous... (terminer après les autres tests) 
+spike  ousmane
 humidity  
 cloud  
 variance  

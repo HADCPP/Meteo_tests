@@ -1,5 +1,4 @@
 #include "Diurnal_cycle.h"
-#include "utils.h"
 #include <vector>
 #include <string>
 #include <iostream>
@@ -13,11 +12,11 @@ namespace INTERNAL_CHECKS
 {
 
 
-	bool dcc_quartile_check(const valarray<float> & day)
+	bool dcc_quartile_check(const varrayfloat & day)
 	{
 		valarray<int> quartile_has_data(0, 4);
-		valarray<size_t> quart_start; //quart_end;
-		quart_start = PYTHON_FUNCTION::Arange(HOURS, 0, HOURS / 4.);
+		varraysize quart_start; //quart_end;
+		quart_start = PYTHON_FUNCTION::Arange<int>(HOURS, 0, int(HOURS / 4.));
 		//quart_end = PYTHON_FUNCTION::Arange(HOURS + 6, 6, HOURS / 4.);
 		for (int q : {1, 2, 3, 4})
 		{
@@ -35,15 +34,15 @@ namespace INTERNAL_CHECKS
 		ofstream &logfile)
 	{
 		//list of flags for each variable
-		vector<valarray<float>> diurnal_flags;
+		vector<varrayfloat> diurnal_flags;
 		int v = 0;
 		for (string variable : variable_list)
 		{
 			CMetVar &st_var = station.getMetvar(variable);
-			CMaskedArray filtered_data = UTILS::apply_filter_flags(st_var);
-			vector<valarray<float>> v_filtered_data;
+			CMaskedArray<float> filtered_data = UTILS::apply_filter_flags(st_var);
+			vector<varrayfloat> v_filtered_data;
 			int iteration = 1;
-			valarray<float> h_filter_data;
+			varrayfloat h_filter_data;
 			int val_index = 0;
 			for (int i = 0; i < filtered_data.data().size(); i++)
 			{
@@ -69,7 +68,7 @@ namespace INTERNAL_CHECKS
 			valarray<int> diurnal_uncertainties(INTMDI, number_of_days);
 
 			int d = 0;
-			for (valarray<float> day : v_filtered_data)
+			for (varrayfloat day : v_filtered_data)
 			{
 				//enough observations and have large enough diurnal range
 				if (day.size() > OBS_PER_DAY)
@@ -77,7 +76,7 @@ namespace INTERNAL_CHECKS
 					int obs_daily_range = int(day.max() - day.min());
 					if (obs_daily_range >= DAILY_RANGE)
 					{
-						valarray<float> scaled_sine,diffs;
+						varrayfloat scaled_sine,diffs;
 						if (dcc_quartile_check(day))
 						{
 							scaled_sine = dcc_make_sine().apply([](float val){ return ((val + 1) / 2); });
@@ -87,7 +86,7 @@ namespace INTERNAL_CHECKS
 							//Find differences for each shifted sine --> cost function
 							for (int h = 0; h < HOURS; h++)
 							{
-								valarray<float> data = day - scaled_sine;
+								varrayfloat data = day - scaled_sine;
 								data = data.apply([](float val){ return std::abs(val); });
 								diffs[h] = data.sum(); // check this array
 								PYTHON_FUNCTION::np_roll<float>(scaled_sine, 1);
@@ -124,7 +123,7 @@ namespace INTERNAL_CHECKS
 			valarray<int> best_fits(-9, 6);
 			for (int h = 0; h < 6; h++)
 			{
-				valarray<size_t> locs = PYTHON_FUNCTION::npwhere<int>(diurnal_uncertainties, h + 1,"=");
+				varraysize locs = PYTHON_FUNCTION::npwhere<int>(diurnal_uncertainties, h + 1,"=");
 				if (locs.size() > 300)
 				{
 					valarray<int> fits=diurnal_best_fits[locs];
@@ -148,7 +147,7 @@ namespace INTERNAL_CHECKS
 						hour_matches[slice(11 - (h + 1), 2 * h + 4, 1)] = 1;
 						number_estimates += 1;
 					}
-					valarray<size_t> centre = PYTHON_FUNCTION::npwhere<int>(hours, best_fits[h], "=");
+					varraysize centre = PYTHON_FUNCTION::npwhere<int>(hours, best_fits[h], "=");
 					if ((centre[0] - h + 1) >= 0)
 					{
 						if ((centre[0] + h + 1) <= 23)
@@ -186,7 +185,7 @@ namespace INTERNAL_CHECKS
 			//If value at lowest uncertainty not found in all others, then see what value is found by all others
 			if (hour_matches[11] != number_estimates)
 			{
-				valarray<size_t> all_match = PYTHON_FUNCTION::npwhere<int>(hour_matches ,number_estimates, "=");
+				varraysize all_match = PYTHON_FUNCTION::npwhere<int>(hour_matches ,number_estimates, "=");
 				//if one is, then use it
 				if (all_match.size() > 0)
 					diurnal_peak = all_match[0];
@@ -268,12 +267,12 @@ namespace INTERNAL_CHECKS
 						}
 					}
 				}
-				vector<valarray<float>> dcc_flags;
+				vector<varrayfloat> dcc_flags;
 				for (int d = 0; d < number_of_days; ++d)
 				{
 					if (to_flag[d] == 1)
 					{
-						valarray<float> dummy(1., filtered_data.data().size());      //filtered data ne contient aucune donnée masquée
+						varrayfloat dummy(1., filtered_data.data().size());      //filtered data ne contient aucune donnée masquée
 						dcc_flags.push_back(dummy);
 						dummy.free();
 					}

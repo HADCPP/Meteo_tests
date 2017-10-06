@@ -173,6 +173,10 @@ namespace INTERNAL_CHECKS
 			{
 
 			}
+			if (mytest.spike)
+			{
+
+			}
 			//Write to file
 			if (first)
 			{

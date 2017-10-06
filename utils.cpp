@@ -1,4 +1,4 @@
-#include"utils.h"
+#include "utils.h"
 #include "station.h"
 #include<vector>
 #include <boost/date_time/gregorian/gregorian.hpp>
@@ -13,15 +13,14 @@
 #include <ctime>
 using namespace std;
 using namespace boost;
-using namespace dlib;
+
 using namespace PYTHON_FUNCTION;
 namespace UTILS
 {
 	/*
 		Returns locations of month starts(using hours as index)
 	*/
-	typedef matrix<double, 1, 1> input_vector;
-	typedef matrix<double, 2, 1> parameter_vector;
+	
 
 
 	void month_starts(boost::gregorian::date start, boost::gregorian::date end,std::vector<int>& month_locs)
@@ -84,7 +83,7 @@ namespace UTILS
 	{
 		//expand the time axis of the variables
 		boost::gregorian::date_duration DaysBetween = end - start;
-		valarray<float> fulltimes;
+		varrayfloat fulltimes;
 		
 		//adjust if input netCDF file has different start date to desired
 		string time_units = station.getTime_units();
@@ -118,29 +117,21 @@ namespace UTILS
 			CMetVar& st_var = station.getMetvar(*variable);
 			//use masked arrays for ease of filtering later
 			
-			std::valarray<float> valmask(static_cast<float>(atof(st_var.getMdi().c_str())), fulltimes.size());
+			varrayfloat valmask(static_cast<float>(atof(st_var.getMdi().c_str())), fulltimes.size());
 			if (match_reverse.size()!= 0)	
 			{
 				valmask = st_var.getData()[match_reverse];
 				 
 			}
 			//but re-mask those filled timestamps which have missing data
-			std::valarray<bool> mask_where(false,valmask.size());
-			for (int i = 0; i < valmask.size();i++)
-			{
-				if (valmask[i] != static_cast<float>(atof(st_var.getMdi().c_str())))
-				{
-					mask_where[i] = true;
-				}	
-			}
-			
-			station.getMetvar(*variable).setMaskedData(valmask[mask_where]);
+						
+			station.getMetvar(*variable).setData(np_ma_where(valmask,"=",Cast<float>(st_var.getMdi())));
 						
 			if (find(var_list.begin(), var_list.end(), *variable) != var_list.end() && do_flagged_obs == true)
 			{
 				//flagged values
 				valmask = static_cast<float>(atof(st_var.getMdi().c_str()));
-				std::valarray<float> v1;
+				varrayfloat v1;
 				if (st_var.getFlagged_obs().size() != 0)
 				{
 					v1 = st_var.getFlagged_obs()[match_reverse];
@@ -237,12 +228,12 @@ namespace UTILS
 		où st_var.flags==1 sont masquées
 	*/
 
-	CMaskedArray apply_filter_flags(CMetVar& st_var)
+	CMaskedArray<float> apply_filter_flags(CMetVar& st_var)
 	{
 		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags(),1,st_var.getData());
 	}
 
-	float reporting_accuracy(valarray<float> good_values, bool winddir)
+	float reporting_accuracy(varrayfloat& good_values, bool winddir)
 	{
 		float resolution = -1;
 		if (winddir)
@@ -250,12 +241,12 @@ namespace UTILS
 			resolution = 1;
 			if (good_values.size() > 0)
 			{
-				valarray<float> binEdges = PYTHON_FUNCTION::arange<float>(362, 0);
-				valarray<float> hist = PYTHON_FUNCTION::histogram<float>(good_values, binEdges);
+				varrayfloat binEdges = PYTHON_FUNCTION::arange<float>(362, 0);
+				varrayfloat hist = PYTHON_FUNCTION::histogram(good_values, binEdges);
 				//normalise
 				hist = hist / hist.sum();
 
-				valarray<float> hist1 = hist[PYTHON_FUNCTION::arange<size_t>(360 + 90, 90, 90)];
+				varrayfloat hist1 = hist[PYTHON_FUNCTION::arange<size_t>(360 + 90, 90, 90)];
 				if (hist1.sum() >= 0.6) resolution = 90;
 				hist1 = hist[PYTHON_FUNCTION::arange<size_t>(360 + 45, 45, 45)];
 				if (hist1.sum() >= 0.6) resolution = 45;
@@ -269,9 +260,9 @@ namespace UTILS
 		{
 			if (good_values.size() > 0)
 			{
-				valarray<float> remainders = std::abs(good_values) - std::abs(good_values.apply(UTILS::MyApplyRoundFunc));
-				valarray<float> binEdges = PYTHON_FUNCTION::arange<float>(1.05, -0.05, 0.0);
-				valarray<float> hist = PYTHON_FUNCTION::histogram<float>(good_values, binEdges);
+				varrayfloat remainders = std::abs(good_values) - std::abs(good_values.apply(UTILS::MyApplyRoundFunc));
+				varrayfloat binEdges = PYTHON_FUNCTION::arange<float>(1.05, -0.05, 0.0);
+				varrayfloat hist = PYTHON_FUNCTION::histogram(good_values, binEdges);
 
 				hist = hist / hist.sum();
 				if (hist[0] >= 0.3)
@@ -290,7 +281,7 @@ namespace UTILS
 	/* create bins and bin centres from data 
 		given bin width covers entire range */
 	
-	void create_bins(valarray<float> indata, float binwidth, valarray<float> &bins, valarray<float>  &bincenters)
+	void create_bins(varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters)
 	{
 		//set up the bins
 		int bmins = int(floor(indata.min()));
@@ -301,156 +292,20 @@ namespace UTILS
 
 
 	}
-	double model(const input_vector&  input, const parameter_vector& params)
-	{
-		const double p0 = params(0);
-		const double p1 = params(1);
-
-		const double i0 = input(0);
-		const double temp = p0*i0 + p1 ;
-
-		return temp*temp;
-	}
-	// ----------------------------------------------------------------------------------------
-
-	// This function is the "residual" for a least squares problem.   It takes an input/output
-	// pair and compares it to the output of our model and returns the amount of error.  The idea
-	// is to find the set of parameters which makes the residual small on all the data pairs.
-	// Source : dlib documentation
-	double residual(const std::pair<input_vector, double>& data, const parameter_vector& params)
-	{
-		return model(data.first, params) - data.second;
-	}
-	// ----------------------------------------------------------------------------------------
-	// This function is the derivative of the residual() function with respect to the parameters.
-	parameter_vector residual_derivative(const std::pair<input_vector, double>& data, const parameter_vector& params)
-	{
-		parameter_vector der(2);
-
-		const double p0 = params(0);
-		const double p1 = params(1);
-		
-
-		const double i0 = data.first(0);
-		
-		const double temp = p0*i0 + p1 ;
-
-		der(0) = i0 * 2 * temp;
-		der(1) = 2 * temp;
-		
-		return der;
-	}
-	/*
-		decay function for line fitting
-		p[0] = intercept
-		p[1] = slope
-	*/
-	valarray<float> linear(const valarray<float>& X,  parameter_vector& p)
-	{
-		return float(p(1)) * X + float(p(0));
-	}
-
-	float get_critical_values(std::vector<int> indata, int binmin , int binwidth , float old_threshold )
-	{
-
-		float threshold;
-		if (indata.size() > 0)  //sort indata ?
-		{
-			std::vector<int> dummy = np_abs(indata);
-			dummy = np_ceil<int>(dummy);
-			valarray<float> full_edges = arange<float>(float(3* (*max(dummy.begin(), dummy.end()))), float(binmin), float(binwidth));
-			dummy.clear();
-			valarray<float> full_hist = histogram<float,int>(np_abs(indata), full_edges);
-			if (full_hist.size() > 1)
-			{
-				// use only the central section (as long as it's not just 2 bins)
-				int i = 0;
-				int limit = 0;
-				while (limit < 2)
-				{
-					if (npwhere<float>(full_hist, float(0.), "=").size()>0)
-					{
-						limit = npwhere<float>(full_hist,0.,"=")[i];  //where instead of argwhere??
-						i++;
-					}
-					else
-					{
-						limit = full_hist.size();
-						break;
-					}
-				}
-				valarray<float> edges = full_edges[std::slice(0, limit, 1)];
-				valarray<float> hist = full_hist[std::slice(0, limit, 1)];
-				hist.apply(Log10Func);
-				//Initialiser les parametres
-				
-				// DATA (X,Y)
-				
-
-				std::vector<pair<input_vector, double>> data;
-				input_vector input;
-				for (size_t i = 0; i < edges.size(); ++i)
-				{
-					input(0) = edges[i];
-					data.push_back(make_pair(input, hist[i]));
-				}
-				// Now let's use the solve_least_squares_lm() routine to figure out what the
-				// parameters are based on just the data.
-				//Use the Levenberg-Marquardt method to determine the parameters which
-				// minimize the sum of all squared residuals
-				parameter_vector  fit;
-				fit(0) = hist[np_argmax(hist)];
-				fit(1) = 1;
-			
-				dlib::solve_least_squares_lm(objective_delta_stop_strategy(1e-7).be_verbose(),
-					residual,
-					derivative(residual),
-					data,
-					fit);
-				valarray<float> fit_curve = linear(full_edges, fit);
-				if (fit(1) < 0)
-				{
-					//in case the fit has a positive slope
-					//where does fit fall below log10(-0.1)
-					if (npwhere<float>(fit_curve, float(-1), "<").size()>0)
-					{
-						size_t fit_below_point1 = npwhere<float>(fit_curve, float(-1), "<")[0];
-						valarray<float> dummy = full_hist[slice(fit_below_point1, full_hist.size() - fit_below_point1, 1)];
-						size_t first_zero_bin = npwhere<float>(dummy, 0, "=")[0] + 1;
-						threshold = binwidth*(fit_below_point1 + first_zero_bin);
-					}
-					else
-					{
-						//too shallow a decay - use default maximum
-						threshold = full_hist.size();
-					}
-					//find first empty bin after that
-				}
-				else threshold = full_hist.size();
-				
-			}
-			else 
-				threshold = *std::max_element(indata.begin(),indata.end()) + binwidth;
-		}
-		else 
-			threshold = *std::max_element(indata.begin(), indata.end()) + binwidth;
-
-		return threshold;
-	}
-
+	
 	//Sum up a single month across all years(e.g.all Januaries)
 	//return this_month, year_ids, datacount
 
-	void  concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, std::valarray<float>& data, std::vector<CMaskedArray>& this_month,
-		std::vector<int>& year_ids, std::valarray<float>& datacount, float missing_value, bool hours)
+	void  concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, varrayfloat& data, std::vector<CMaskedArray<float>>& this_month,
+		std::vector<int>& year_ids, varrayfloat& datacount, float missing_value, bool hours)
 	{
 
 		
 		for (size_t y = 0; y < month_ranges.size();y++)
 		{
 
-			valarray<float> dummy = data[slice(month_ranges[y].first, month_ranges[y].second - month_ranges[y].first + 1, 1)];
-			CMaskedArray this_year = CMaskedArray::CMaskedArray(missing_value, dummy);
+			varrayfloat dummy = data[slice(month_ranges[y].first, month_ranges[y].second - month_ranges[y].first + 1, 1)];
+			CMaskedArray<float> this_year = CMaskedArray<float>::CMaskedArray(missing_value, dummy);
 			datacount[y] = this_year.compressed().size();
 
 			if (y == 0)
@@ -467,7 +322,7 @@ namespace UTILS
 			{
 				if (hours)
 				{
-					std::vector<CMaskedArray> t_years = L_reshape(this_year, 24);
+					std::vector<CMaskedArray<float>> t_years = L_reshape(this_year, 24);
 					std::copy(t_years.begin(), t_years.end(), std::back_inserter(this_month));
 				}
 				else
@@ -480,9 +335,9 @@ namespace UTILS
 	}
 
 	//''' Calculate the percentile of data '''
-	inline float percentiles(std::valarray<float>& data, float percent, bool idl)
+	inline float percentiles(varrayfloat& data, float percent, bool idl)
 	{
-		valarray<float> sorted_data(data);
+		varrayfloat sorted_data(data);
 		std::sort(std::begin(sorted_data), std::end(sorted_data));
 		int n_data;
 		float percentile;
@@ -500,14 +355,12 @@ namespace UTILS
 		return percentile;
 	}
 		
-
-
-	void winsorize(std::valarray<float>& data, float percent, bool idl )
+	void winsorize(varrayfloat& data, float percent, bool idl )
 	{
 		for (float pct : { percent, 1 - percent })
 		{
 			float percentile;
-			valarray<size_t> locs(data.size());
+			varraysize locs(data.size());
 			if (pct < 0.5)
 			{
 				percentile = percentiles(data, pct, idl );
@@ -521,6 +374,15 @@ namespace UTILS
 			data[locs] = percentile;
 
 		}
+	}
+	/*Calculate the IQR of the data*/
+	float IQR(varrayfloat data, double percentile )
+	{
+		varrayfloat sorted_data(data);
+		std::sort(std::begin(sorted_data), std::end(sorted_data));
+		int n_data = sorted_data.size();
+		int quartile = int(std::round(percentile*n_data));
+		return sorted_data[n_data - quartile] - sorted_data[quartile];
 	}
 
 

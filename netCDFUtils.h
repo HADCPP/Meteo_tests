@@ -4,6 +4,7 @@
 #include "ncFile.h"
 #include "ncDim.h"
 #include "ncVar.h"
+#include "Utilities.h"
 #include <vector>
 #include "station.h"
 #include <typeinfo.h>

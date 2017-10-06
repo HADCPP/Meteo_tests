@@ -45,7 +45,7 @@ static const double GAP_SIZE = 2;
 static const double BIN_SIZE = 0.25;
 
 //#************************************************************************
-double dgc_get_monthly_averages(std::valarray<float> data, double limit, double mdi, bool MEAN = false)
+double dgc_get_monthly_averages(varrayfloat data, double limit, double mdi, bool MEAN = false)
 {
     if ( len(data.compressed()) >= limit )
 	{
@@ -172,7 +172,7 @@ double dgc_find_gap(hist, bins, double threshold, double gap_size = GAP_SIZE)
 
 //#************************************************************************
 
-std::valarray<float> dgc_monthly(CStation& station, string variable, std::valarray<float> flags, gregorian::date start, gregorian::date end)
+varrayfloat dgc_monthly(CStation& station, string variable, varrayfloat flags, gregorian::date start, gregorian::date end)
 {
 
 	// '''
@@ -348,7 +348,7 @@ std::valarray<float> dgc_monthly(CStation& station, string variable, std::valarr
 }
 
 //#************************************************************************
-std::valarray<float> dgc_all_obs(CStation& station, string variable, std::valarray<float> flags, gregorian::date start, gregorian::date end, bool windspeeds = false, bool GH = false)
+varrayfloat dgc_all_obs(CStation& station, string variable, varrayfloat flags, gregorian::date start, gregorian::date end, bool windspeeds = false, bool GH = false)
 {
 
 	// '''RJHD addition working on all observations'''

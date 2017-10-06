@@ -1,6 +1,8 @@
 #pragma once
 #include "station.h"
 #include "utils.h"
+#include "utils.h"
+
 #include <vector>
 #include <string>
 #include <boost/date_time/gregorian/gregorian.hpp>

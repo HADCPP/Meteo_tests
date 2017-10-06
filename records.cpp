@@ -64,7 +64,7 @@ namespace INTERNAL_CHECKS
 		return region;
 }
 	
-	void krc_set_flags(std::valarray<size_t> locs, CStation& station, int col)
+	void krc_set_flags(varraysize locs, CStation& station, int col)
 	{
 		if (locs.size() > 0)
 			station.setQc_flags(float(1), locs, col);
@@ -111,13 +111,13 @@ namespace INTERNAL_CHECKS
 		{
 			CMetVar& st_var = station.getMetvar(variable);
 			string st_region = krc_get_wmo_region(station.getWmoId());
-			CMaskedArray all_filtered = UTILS::apply_filter_flags(st_var);
-			valarray<size_t> too_high = PYTHON_FUNCTION::npwhere<float>(all_filtered.data(), maxes[variable][st_region], ">");
+			CMaskedArray<float> all_filtered = UTILS::apply_filter_flags(st_var);
+			varraysize too_high = PYTHON_FUNCTION::npwhere<float>(all_filtered.data(), maxes[variable][st_region], ">");
 			krc_set_flags(too_high, station, flag_col[v]);
 			//make sure that don"t flag the missing values!
-			valarray<size_t> too_low = PYTHON_FUNCTION::npwhere<float>(all_filtered, mins[variable][st_region], '<');
+			varraysize too_low = PYTHON_FUNCTION::npwhere(all_filtered, mins[variable][st_region], '<');
 			krc_set_flags(too_low, station, flag_col[v]);
-			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], float(0), "!");
+			varraysize flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], float(0), "!");
 			UTILS::print_flagged_obs_number(logfile, "World Record", variable, flag_locs.size());
 			st_var.setFlags(flag_locs, float(1));
 			v++;

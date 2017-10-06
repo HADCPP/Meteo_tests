@@ -43,7 +43,7 @@ namespace INTERNAL_CHECKS
 	obs_type - updated observation type
 	*/
 
-	void occ_normal(COddCluster& cluster, int &obs_type, int time, valarray<float> flags)
+	void occ_normal(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
 	{
 		cluster.m_last_data=time;
 	}
@@ -58,7 +58,7 @@ namespace INTERNAL_CHECKS
 		: returns :
 		cluster - updated cluster information
 		obs_type - updated observation type*/
-	void occ_in_cluster(COddCluster& cluster, int &obs_type, int time, valarray<float> flags)
+	void occ_in_cluster(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
 	{
 		if (cluster.m_length == 6 || time - cluster.m_start > 24)
 		{
@@ -90,7 +90,7 @@ namespace INTERNAL_CHECKS
 	cluster - updated cluster information
 	obs_type - updated observation type
 	*/
-	void occ_start_cluster(COddCluster& cluster, int &obs_type, int time, valarray<float> flags)
+	void occ_start_cluster(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
 	{
 		if (time - cluster.m_last_data >= 48)
 		{
@@ -124,7 +124,7 @@ namespace INTERNAL_CHECKS
        cluster - updated cluster information
        obs_type - updated observation type
 	*/
-	void occ_after_cluster(COddCluster& cluster, int &obs_type, int time, valarray<float> flags)
+	void occ_after_cluster(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
 	{
 		if (time - cluster.m_end >= 48)
 		{
@@ -171,15 +171,15 @@ namespace INTERNAL_CHECKS
 		for (string variable : variable_list)
 		{
 			CMetVar& st_var = station.getMetvar(variable);
-			CMaskedArray filtered_data = UTILS::apply_filter_flags(st_var);
+			CMaskedArray<float> filtered_data = UTILS::apply_filter_flags(st_var);
 
-			valarray<float> var_flags = station.getQc_flags()[v];	
+			varrayfloat var_flags = station.getQc_flags()[v];	
 			
 			unsigned int prev_flag_number = 0;
 			if (second)
 			{
 				//count currently existing flags
-				valarray<float> dummy = var_flags[var_flags != float(0)];
+				varrayfloat dummy = var_flags[var_flags != float(0)];
 				prev_flag_number = dummy.size();
 			}
 			//using IDL copy as method to ensure reproducibility (initially)
@@ -213,7 +213,7 @@ namespace INTERNAL_CHECKS
 				
 			}
 			station.setQc_flags(var_flags, v);
-			valarray<size_t> flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], float(0), "!");
+			varraysize flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], float(0), "!");
 			UTILS::print_flagged_obs_number(logfile, "Odd Cluster", variable, flag_locs.size() - prev_flag_number);
 			//copy flags into attribute
 			st_var.setFlags(flag_locs, float(1));

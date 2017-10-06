@@ -449,7 +449,7 @@ namespace NETCDFUTILS
 				{
 					float *data = new float[ncFile.getDim("time").getSize()];
 					var.getVar(data);
-					valarray<float> vdata(data, ncFile.getDim("time").getSize());
+					varrayfloat vdata(data, ncFile.getDim("time").getSize());
 					this_var.setData(vdata);
 					delete[] data;
 				}
@@ -505,7 +505,7 @@ namespace NETCDFUTILS
 				{
 					cerr << 8 << "	" << *variable << e.what() << endl;
 					if (*variable == "temperatures" || *variable == "dewpoints" || *variable == "slp" || *variable == "windspeeds")
-						this_var.setFlagged_value (-2.e30);
+						this_var.setFlagged_value (float(-2.e30));
 					else
 						this_var.setFlagged_value(-888);
 				}
@@ -523,7 +523,7 @@ namespace NETCDFUTILS
 						cout << "no QC flags available" << endl;
 					else
 					{
-						const int ligne = station.getMetvar("time").getData().size();
+						size_t ligne = station.getMetvar("time").getData().size();
 						float **qcflags = 0;
 						qcflags = new float*[ligne];
 						for (size_t i = 0; i < ligne; i++)
@@ -544,10 +544,10 @@ namespace NETCDFUTILS
 					cout << "no flagged obs available in netcdf file " << endl;
 				else // if doesn't exist, make an empty array 
 				{
-					const int ligne = station.getMetvar("time").getData().size();
+					size_t ligne = station.getMetvar("time").getData().size();
 					for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); var++)
 					{
-						valarray<float> flaggedobs(static_cast<float>(atoi(station.getMetvar(*var).getMdi().c_str())), ligne);
+						varrayfloat flaggedobs(static_cast<float>(atoi(station.getMetvar(*var).getMdi().c_str())), ligne);
 						//push array into relevant attribute
 						station.getMetvar(*var).setFlagged_obs(flaggedobs);
 					}
@@ -566,7 +566,7 @@ namespace NETCDFUTILS
 				int v = 0;
 				for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); ++var,v++)
 				{
-					valarray<float> report{ reporting[v] };
+					varrayfloat report{ reporting[v] };
 					station.getMetvar(*var).setReportingStats(report);
 				}
 				delete[] reporting;
@@ -756,7 +756,7 @@ namespace NETCDFUTILS
 		//combine all reporting accuracies together to output as single array in netcdf file - if available
 		try
 		{
-			valarray<float> reporting_stats;
+			varrayfloat reporting_stats;
 			
 			for (string var : var_list)
 			{

@@ -1,9 +1,14 @@
 #pragma once
-#include<string>
+
+#include "python_function.h"
+#include "Utilities.h"
+
+#include <string>
 #include <vector>
 #include <map>
 #include <valarray>
 #include <boost/numeric/ublas/matrix.hpp>
+
 
 
 struct s_time
@@ -21,7 +26,6 @@ public:
 	{
 		CMetVar::m_name = name;
 		CMetVar::m_long_name = long_name;
-
 		m_fdi = 0;
 		m_flagged_value = 0;
 	}
@@ -40,23 +44,23 @@ public:
 	void setFdi(float fdi){ m_fdi = fdi; }
 	void setCellmethods(std::string cell_methods){ m_cell_methods = cell_methods; }
 	void setStandard_name(std::string standard_name){ m_standard_name = standard_name; }
-	void setReportingStats(std::valarray<float> reporting_stats){ m_reporting_stats = reporting_stats; }
-	void setFlagged_obs(std::valarray<float> flagged_obs){ m_flagged_obs = flagged_obs; }
+	void setReportingStats(varrayfloat reporting_stats){ m_reporting_stats = reporting_stats; }
+	void setFlagged_obs(varrayfloat flagged_obs){ m_flagged_obs = flagged_obs; }
 	void setFlagged_value(float flagged_value){ m_flagged_value = flagged_value; }
-	void setFlags(std::valarray<float> flag){ m_flags = flag; }
-	void setFlags(std::valarray<size_t> v_flag,float flag){ m_flags[v_flag] = flag; }
-	void setData(std::valarray<float> data){ m_data = data; }
-	void setData(std::valarray<size_t> data,float val){ m_data[data] = val; }
-	void setMaskedData(std::valarray<float> data){ m_masked_data = data; }
+	void setFlags(varrayfloat flag){ m_flags = flag; }
+	void setFlags(varraysize v_flag,float flag){ m_flags[v_flag] = flag; }
+	void setData(varrayfloat data){ m_data.data() = data; }
+	void setData(varraysize data,float val){ m_data.data()[data] = val; }
+	void setData(CMaskedArray<float> data){ m_data=data; }
 	std::string getMdi(){ return m_mdi; }
 	float getFdi(){ return m_fdi; }
 	std::string getDtype(){ return m_dtype; }
 	std::string getStandardname(){ return m_standard_name; }
-	std::valarray<float> getFlagged_obs(){ return m_flagged_obs; }
-	std::valarray<float> getReportingStats(){ return m_reporting_stats; }
-	std::valarray<float> getData(){ return m_data; }
-	std::valarray<float> getMaskedData(){ return m_masked_data; }
-	std::valarray<float> getFlags(){ return m_flags; }
+	varrayfloat getFlagged_obs(){ return m_flagged_obs; }
+	varrayfloat getReportingStats(){ return m_reporting_stats; }
+	varrayfloat getData(){ return m_data.data(); }
+	CMaskedArray<float>  getAllData(){ return m_data; }
+	varrayfloat getFlags(){ return m_flags; }
 	std::string getValidMax(){return m_valid_max ; }
 	std::string getValidMin(){return m_valid_min ; }
 	std::string getCoordinates(){ return m_coordinates; }
@@ -89,13 +93,11 @@ protected :
 	std::string m_cell_methods;
 	float m_fdi;
 	float m_flagged_value;
-	std::valarray<float> m_reporting_stats;
-	std::valarray<float> m_flags;
-	std::valarray<float> m_data;
-	std::valarray<float> m_masked_data; // données sans valeurs manquantes
+	varrayfloat m_reporting_stats;
+	varrayfloat m_flags;
+	CMaskedArray<float> m_data;
 	std::valarray <float> m_flagged_obs;
 };
-
 
 
 class CStation
@@ -114,11 +116,12 @@ public:
 		const std::string& getName()const{ return m_name; }
 		const std::string& getWmoId()const{ return m_wmoid; }
 		// Remplir qc_flag correpondant à la variable qui se trouve à la position colonne
-		void setQc_flags(std::valarray<float> qc_flags,int v){ m_qc_flags[v] = qc_flags; }
-		void setQc_flags(float value, std::valarray<size_t> indices, int index){ m_qc_flags[index][indices] = value; }
-		void setQc_flags(std::valarray<float> qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
-		std::vector<std::valarray<float>>& getQc_flags(){ return m_qc_flags; }
-		std::valarray<float>& getQc_flags(int v){ return m_qc_flags[v]; }
+		void setQc_flags(varrayfloat qc_flags,int v){ m_qc_flags[v] = qc_flags; }
+		void setQc_flags(float value, varraysize indices, int index){ m_qc_flags[index][indices] = value; }
+		void setQc_flags(varrayfloat valar, varraysize indices, int index){ m_qc_flags[index][indices] = valar; }
+		void setQc_flags(varrayfloat qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
+		std::vector<varrayfloat>& getQc_flags(){ return m_qc_flags; }
+		varrayfloat& getQc_flags(int v){ return m_qc_flags[v]; }
 		void setMetVar(CMetVar metvar, std::string var){ (m_Met_var)[var] = metvar; }
 		CMetVar& getMetvar(std::string var){ return m_Met_var[var]; }
 		void setTime_units(std::string units){ m_time.units = units; }
@@ -140,7 +143,7 @@ protected:
 	double m_lat;
 	double m_lon;
 	double m_elev;
-	std::vector<std::valarray<float>> m_qc_flags;
+	std::vector<varrayfloat> m_qc_flags;
 	std::map<std::string, CMetVar >  m_Met_var;
 	s_time m_time;
 	std::string m_history;

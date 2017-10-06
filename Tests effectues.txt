@@ -7,7 +7,7 @@ records   ousmane
 streaks  ousmane
 climatological ous... (terminer après les autres tests) 
 spike  ousmane
-humidity  
+humidity  ousmane
 cloud  
 variance  
 winds  

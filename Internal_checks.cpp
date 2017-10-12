@@ -1,30 +1,4 @@
 #include "Internal_checks.h"
-#include "station.h"
-#include "netCDFUtils.h"
-#include "netcdf.h"
-#include "ncFile.h"
-#include "ncDim.h"
-#include "ncVar.h"
-#include "duplicate_months.h"
-#include "utils.h"
-#include "frequent_values.h"
-#include "odd_cluster.h"
-#include "records.h"
-#include "streaks.h"
-
-#include <vector>
-#include <ctime>
-#include <sstream>
-#include <iostream>
-#include <string>
-#include <fstream>
-#include <errno.h>
-#include <exception>
-#include <cmath>
-#include <boost/date_time/gregorian/gregorian.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/filesystem.hpp>
-#include <boost/chrono.hpp>
 
 
 
@@ -171,9 +145,22 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.climatological)
 			{
-
+				
 			}
 			if (mytest.spike)
+			{
+				sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
+				UTILS::apply_windspeed_flags_to_winddir(station);
+			}
+			if (mytest.humidity)
+			{
+
+			}
+			if (mytest.cloud)
+			{
+				ccc(station, { 33,34, 35, 36, 37, 38, 39, 40 }, logfile);
+			}
+			if (mytest.variance)
 			{
 
 			}

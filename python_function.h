@@ -10,8 +10,8 @@
 
 
 
-template<typename T>
-class CMaskedArray
+
+template<typename T> class CMaskedArray
 {
 public:
 
@@ -48,17 +48,7 @@ public:
 		m_mask = mask_array_copy.m_mask;
 		m_masked_indices = mask_array_copy.m_masked_indices;
 	}
-	CMaskedArray& CMaskedArray::operator=(CMaskedArray const& mask_array_copy)
-	{
-		if (this != &mask_array_copy)
-		{
-			m_fill_value = mask_array_copy.m_fill_value;
-			m_data = mask_array_copy.m_data;
-			m_mask = mask_array_copy.m_mask;
-			m_masked_indices = mask_array_copy.m_masked_indices;
-		}
-		return *this;
-	}
+	
 	T fill_value() const{ return m_fill_value; }
 	T ma_sum()
 	{
@@ -103,24 +93,52 @@ public:
 	}
 	void fill_value(T fill){m_fill_value = fill;}
 
-	void setData(varraysize indices, std::valarray<T> new_data)
-	{
-		m_data[indices] = new_data;
-	}
-	void setData(size_t indice, T new_data)
-	{
-		m_data[indice] = new_data;
-	}
-	T operator[](int indice){return m_data[indice];}
-	
-	std::valarray<T> operator[](varraysize indices){return m_data[indices];}
+	void setData(varraysize indices, std::valarray<T> new_data){m_data[indices] = new_data;}
+	void setData(size_t indice, T new_data){m_data[indice] = new_data;}
 	void free()
 	{
 		m_mask.free();
 		m_data.free();
 		m_masked_indices.clear();
 	}
+	T operator[](int indice){return m_data[indice];}
 	
+	std::valarray<T> operator()(varraysize indices){return m_data[indices];}
+	CMaskedArray<T> operator[](varraysize indices)
+	{
+		CMaskedArray<T> ma;
+		ma.mask = m_mask[indices];
+		ma.data = m_data[indices]; 
+		ma.fill = m_fill_value;
+		return ma; 
+	}
+
+	CMaskedArray& CMaskedArray::operator=(CMaskedArray const& mask_array_copy)
+	{
+		if (this != &mask_array_copy)
+		{
+			m_fill_value = mask_array_copy.m_fill_value;
+			m_data = mask_array_copy.m_data;
+			m_mask = mask_array_copy.m_mask;
+			m_masked_indices = mask_array_copy.m_masked_indices;
+		}
+		return *this;
+	}
+	
+	CMaskedArray<T> CMaskedArray<T>::operator-(CMaskedArray<T> const& m1)
+	{
+		CMaskedArray<T> ma;
+		ma.m_mask = m_mask*m1.m_mask;
+		ma.m_data = m_data - m1.m_data;
+		return ma;
+	}	
+	CMaskedArray<T> CMaskedArray<T>::operator()(size_t lb,size_t ub)
+	{
+		CMaskedArray<T> ma;
+		ma.m_mask = m_mask[std::slice(lb, ub - lb, 1)];
+		ma.m_data = m_data[std::slice(lb, ub - lb, 1)];
+		return ma;
+	}
 protected:
 
 	T m_fill_value;
@@ -128,7 +146,7 @@ protected:
 	std::valarray<bool> m_mask; 
 	std::vector<size_t> m_masked_indices;
 	
-};
+}; 
 
 
 
@@ -1075,5 +1093,16 @@ namespace PYTHON_FUNCTION
 		return news;
 	}
 	
+	template<typename T>
+	std::valarray<T> npDiff(std::valarray<T> data)
+	{
+		std::valarray<T> diff(data.size() - 1);
+
+		for (size_t i = 0; i < diff.size(); ++i)
+		{
+			diff[i] = data[i + 1] - data[i];
+		}
+		return diff;
+	}
 	
 }

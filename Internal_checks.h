@@ -1,8 +1,35 @@
 #pragma once
-#include <vector>
 #include "station.h"
-#include <string>
+#include "netCDFUtils.h"
+#include "netcdf.h"
+#include "ncFile.h"
+#include "ncDim.h"
+#include "ncVar.h"
+#include "duplicate_months.h"
+#include "utils.h"
+#include "frequent_values.h"
+#include "odd_cluster.h"
+#include "records.h"
+#include "streaks.h"
 #include "Utilities.h"
+#include "spike.h"
+#include "humidity.h"
+#include "clouds.h"
+
+#include <vector>
+#include <ctime>
+#include <sstream>
+#include <iostream>
+#include <string>
+#include <fstream>
+#include <errno.h>
+#include <exception>
+#include <cmath>
+#include <boost/date_time/gregorian/gregorian.hpp>
+#include <boost/date_time/posix_time/posix_time.hpp>
+#include <boost/filesystem.hpp>
+#include <boost/chrono.hpp>
+
 
 struct test
 {
@@ -23,8 +50,8 @@ struct test
 typedef struct test test;
 namespace
 {
-	std::vector<std::string> process_var{ "temperatures", "dewpoints", "windspeeds", "winddirs", "slp" };
-	std::vector<std::string> carry_thru_vars;
+	std::vector<std::string> process_var{ "temperatures", "dewpoints", "windspeeds", "winddirs", "slp", "total_cloud_cover", "low_cloud_cover", "mid_cloud_cover", "high_cloud_cover" };
+	std::vector<std::string> carry_thru_vars{ "cloud_base", "precip1_depth", "precip1_period", "wind_gust", "past_sigwx1" };
 	
 }
 namespace INTERNAL_CHECKS

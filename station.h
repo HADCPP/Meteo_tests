@@ -52,6 +52,10 @@ public:
 	void setData(varrayfloat data){ m_data.data() = data; }
 	void setData(varraysize data,float val){ m_data.data()[data] = val; }
 	void setData(CMaskedArray<float> data){ m_data=data; }
+	void setData(varraysize indices,float value,bool mask)
+	{ m_data.data()[indices] = value; 
+		m_data.mask()[indices] = mask;
+	}
 	std::string getMdi(){ return m_mdi; }
 	float getFdi(){ return m_fdi; }
 	std::string getDtype(){ return m_dtype; }

@@ -151,6 +151,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="climatological.cpp" />
+    <ClCompile Include="cloud.cpp" />
     <ClCompile Include="distributional_gap.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -158,6 +159,7 @@
     <ClCompile Include="Diurnal_cycle.cpp" />
     <ClCompile Include="duplicate_months.cpp" />
     <ClCompile Include="frequent_values.cpp" />
+    <ClCompile Include="humidity.cpp" />
     <ClCompile Include="Internal_checks.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="netCDFUtils.cpp" />
@@ -170,9 +172,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="climatological.h" />
+    <ClInclude Include="clouds.h" />
     <ClInclude Include="Diurnal_cycle.h" />
     <ClInclude Include="duplicate_months.h" />
     <ClInclude Include="frequent_values.h" />
+    <ClInclude Include="humidity.h" />
     <ClInclude Include="Internal_checks.h" />
     <ClInclude Include="odd_cluster.h" />
     <ClInclude Include="python_function.h" />

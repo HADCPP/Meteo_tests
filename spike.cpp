@@ -9,7 +9,7 @@ using namespace boost::numeric::ublas;
 
 namespace INTERNAL_CHECKS
 {
-	void sc(CStation &station, std::vector<std::string >& variable_list, std::vector<int> flag_col, boost::gregorian::date  start,
+	void sc(CStation &station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date  start,
 		boost::gregorian::date end, std::ofstream&  logfile, bool second)
 	{
 

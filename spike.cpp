@@ -31,7 +31,7 @@ namespace INTERNAL_CHECKS
 			}
 			CMetVar st_var = station.getMetvar(variable);
 			CMaskedArray<float>  all_filtered = apply_filter_flags(st_var);
-			float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var).data());
+			float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var).m_data);
 			//to match IDL system - should never be called as would mean no data
 			if (reporting_resolution == -1)  reporting_resolution = 1;
 
@@ -74,10 +74,10 @@ namespace INTERNAL_CHECKS
 
 			}
 
-			varraysize good = npwhere<bool>(all_filtered.mask(), false, "=");
+			varraysize good = npwhere<bool>(all_filtered.m_mask, false, "=");
 
 			CMaskedArray<int> full_time_diffs = CMaskedArray<int>::CMaskedArray(float(0), all_filtered.size());
-			full_time_diffs.Setmask(all_filtered.mask());
+			full_time_diffs.m_mask=all_filtered.m_mask;
 			valarray<int> time_data(station.getTime_data().size());
 			std::copy(station.getTime_data().begin(), station.getTime_data().end(), std::begin(time_data));
 			std::valarray<int> dummy(good.size());
@@ -85,23 +85,23 @@ namespace INTERNAL_CHECKS
 			dummy[good] = time_data[std::slice(1, good.size() - 1, 1)];
 			dummy[good] -= time_data[std::slice(0, good.size() - 1, 1)];
 			dummy[good[good.size() - 1]] = dummy[good[0]];
-			full_time_diffs.setData(good,dummy);
+			full_time_diffs.m_data[good]=dummy;
 			
 			//develop critical values using clean values
 			cout << "sort the differencing if values were flagged rather than missing" << endl;
 
 			CMaskedArray<float> full_filtered_diffs = CMaskedArray<float>::CMaskedArray(float(0), all_filtered.size());
-			full_filtered_diffs.Setmask(all_filtered.mask());
+			full_filtered_diffs.m_mask=all_filtered.m_mask;
 			varrayfloat dumm(good.size());
 			dumm[good] = all_filtered.compressed()[std::slice(1, all_filtered.compressed().size() - 1, 1)];
 			dumm[good] -= all_filtered.compressed()[std::slice(0, all_filtered.compressed().size() - 1, 1)];
 			if (all_filtered.compressed().size() != good.size()) dumm[good.size()- 1]= dumm[good[0]];
-			full_filtered_diffs.setData(good, dumm);
+			full_filtered_diffs.m_data[good]= dumm;
 
 			//test all values
-			varraysize good_to_uncompress = npwhere<bool>(st_var.getAllData().mask(), false, "=");
+			varraysize good_to_uncompress = npwhere<bool>(st_var.getAllData().m_mask, false, "=");
 			CMaskedArray<float> full_value_diffs = CMaskedArray<float>::CMaskedArray(float(0),st_var.getData().size());
-			full_value_diffs.Setmask(st_var.getAllData().mask());
+			full_value_diffs.m_mask= st_var.getAllData().m_mask;
 			size_t taille = st_var.getAllData().compressed().size();
 			dumm.resize(taille);
 			dumm[good_to_uncompress] = st_var.getAllData().compressed()[std::slice(1, taille - 1, 1)];
@@ -128,16 +128,16 @@ namespace INTERNAL_CHECKS
 				{
 					if (year == 0)
 					{
-						this_month_time_diff = full_time_diffs.data()[std::slice(month_ranges_years[month][year].first,
+						this_month_time_diff = full_time_diffs.m_data[std::slice(month_ranges_years[month][year].first,
 							month_ranges_years[month][year].second - month_ranges_years[month][year].first, 1)];
-						this_month_filtered_diff = full_filtered_diffs.data()[std::slice(month_ranges_years[month][year].first,
+						this_month_filtered_diff = full_filtered_diffs.m_data[std::slice(month_ranges_years[month][year].first,
 							month_ranges_years[month][year].second - month_ranges_years[month][year].first, 1)];
 					}
 					else
 					{
-						this_month_time_diff += full_time_diffs.data()[std::slice(month_ranges_years[month][year].first,
+						this_month_time_diff += full_time_diffs.m_data[std::slice(month_ranges_years[month][year].first,
 							month_ranges_years[month][year].second - month_ranges_years[month][year].first, 1)];
-						this_month_filtered_diff += full_filtered_diffs.data()[std::slice(month_ranges_years[month][year].first,
+						this_month_filtered_diff += full_filtered_diffs.m_data[std::slice(month_ranges_years[month][year].first,
 							month_ranges_years[month][year].second - month_ranges_years[month][year].first, 1)];
 					}
 					month_locs[std::slice(month_ranges_years[month][year].first,
@@ -191,12 +191,12 @@ namespace INTERNAL_CHECKS
 			//get time differences for unfiltered data
 			full_time_diffs.resize(st_var.getData().size());
 
-			full_time_diffs.Setmask(st_var.getAllData().mask());
+			full_time_diffs.m_mask=st_var.getAllData().m_mask;
 			time_data = time_data[good_to_uncompress];
 			dummy[good_to_uncompress] = time_data[std::slice(1, good.size() - 1, 1)];
 			dummy[good_to_uncompress] -= time_data[std::slice(0, good.size() - 1, 1)];
 			dummy[good_to_uncompress[good_to_uncompress.size() - 1]] = dummy[good_to_uncompress[0]];
-			full_time_diffs.setData(good_to_uncompress, dummy);
+			full_time_diffs.m_data[good_to_uncompress]= dummy;
 			dummy.free();
 			time_data.free();
 			time_diffs.resize(full_time_diffs.size());
@@ -218,17 +218,17 @@ namespace INTERNAL_CHECKS
 					dumm.resize(taille);
 					dumm = st_var.getData()[indice];
 					CMaskedArray<float> next_values = CMaskedArray<float>::CMaskedArray(dumm);
-					valarray<bool> mask = st_var.getAllData().mask()[indice];
-					next_values.Setmask(mask);
+					valarray<bool> mask = st_var.getAllData().m_mask[indice];
+					next_values.m_mask=mask;
 					
 					mask.free();
 					
-					good = npwhere(next_values.mask(), false, "=");
+					good = npwhere(next_values.m_mask, false, "=");
 					indice = good[std::slice(0, 10, 1)];
-					dumm = next_values.data()[indice];
+					dumm = next_values.m_data[indice];
 					float next_median = idl_median(dumm);
 					float next_diff = std::abs(value_diffs[t]);  //out of spike
-					median_diff = std::abs(next_median - st_var.getAllData().data()[good_to_uncompress[t]]);
+					median_diff = std::abs(next_median - st_var.getAllData().m_data[good_to_uncompress[t]]);
 
 					if (critical_values(time_diffs[t] - 1, month_locs[t]) != Cast<float>(st_var.getMdi()))
 					{
@@ -249,18 +249,18 @@ namespace INTERNAL_CHECKS
 					dumm.resize(taille);
 					dumm = st_var.getData()[indice];
 					CMaskedArray<float> prev_values = CMaskedArray<float>::CMaskedArray(dumm);
-					valarray<bool> mask = st_var.getAllData().mask()[indice];
-					prev_values.Setmask(mask);
+					valarray<bool> mask = st_var.getAllData().m_mask[indice];
+					prev_values.m_mask=mask;
 
 					mask.free();
 
-					good = npwhere(prev_values.mask(), false, "=");
+					good = npwhere(prev_values.m_mask, false, "=");
 
 					indice = good[std::slice(good.size()-11, 10, 1)];
-					dumm = prev_values.data()[indice];
+					dumm = prev_values.m_data[indice];
 					float prev_median = idl_median(dumm);
 					float prev_diff = std::abs(value_diffs[t]);  //out of spike
-					median_diff = std::abs(prev_median - st_var.getAllData().data()[good_to_uncompress[t]]);
+					median_diff = std::abs(prev_median - st_var.getAllData().m_data[good_to_uncompress[t]]);
 
 					if (critical_values(time_diffs[t-1] - 1, month_locs[t]) != Cast<float>(st_var.getMdi()))
 					{

@@ -11,10 +11,11 @@
 #include <algorithm>
 #include<fstream>
 #include <ctime>
+
 using namespace std;
 using namespace boost;
-
 using namespace PYTHON_FUNCTION;
+
 namespace UTILS
 {
 	/*
@@ -125,7 +126,7 @@ namespace UTILS
 			}
 			//but re-mask those filled timestamps which have missing data
 						
-			station.getMetvar(*variable).setData(np_ma_where(valmask,"=",Cast<float>(st_var.getMdi())));
+			station.getMetvar(*variable).setData(ma_masked_where(valmask,Cast<float>(st_var.getMdi()),valmask));
 						
 			if (find(var_list.begin(), var_list.end(), *variable) != var_list.end() && do_flagged_obs == true)
 			{
@@ -230,7 +231,7 @@ namespace UTILS
 
 	CMaskedArray<float> apply_filter_flags(CMetVar& st_var)
 	{
-		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags(),1,st_var.getData());
+		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags(),float(1),st_var.getData());
 	}
 
 	float reporting_accuracy(varrayfloat& good_values, bool winddir)
@@ -276,6 +277,26 @@ namespace UTILS
 			}
 		}
 		return resolution;
+	}
+
+	int reporting_frequency(CMaskedArray<float>& indata)
+	{
+		varraysize masked_locs = npwhere(indata.m_mask, false, "=");
+		int frequency = -1;
+
+		if (masked_locs.size()>0)
+		{
+			varraysize  difference_series = npDiff(masked_locs);
+			varrayfloat binEdges = PYTHON_FUNCTION::arange<float>(25, 1);
+			varrayfloat hist = PYTHON_FUNCTION::histogram(difference_series, binEdges,true);
+			if (hist[0] >= 0.5) frequency = 1;
+			else if (hist[1] >= 0.5) frequency = 2;
+			else if (hist[2] >= 0.5) frequency = 3;
+			else if (hist[3] >= 0.5) frequency = 4;
+			else if (hist[5] >= 0.5) frequency = 6;
+			else frequency = 24;
+		}
+		return frequency;
 	}
 
 	/* create bins and bin centres from data 
@@ -384,9 +405,5 @@ namespace UTILS
 		int quartile = int(std::round(percentile*n_data));
 		return sorted_data[n_data - quartile] - sorted_data[quartile];
 	}
-
-
-		
-
 
 }

@@ -63,6 +63,12 @@
     <ClCompile Include="cloud.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="variance.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="winds.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="duplicate_months.h">
@@ -114,6 +120,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="clouds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="variance.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="winds.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

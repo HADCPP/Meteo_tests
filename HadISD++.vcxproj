@@ -169,6 +169,8 @@
     <ClCompile Include="station.cpp" />
     <ClCompile Include="streaks.cpp" />
     <ClCompile Include="utils.cpp" />
+    <ClCompile Include="variance.cpp" />
+    <ClCompile Include="winds.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="climatological.h" />
@@ -188,6 +190,8 @@
     <ClInclude Include="streaks.h" />
     <ClInclude Include="Utilities.h" />
     <ClInclude Include="utils.h" />
+    <ClInclude Include="variance.h" />
+    <ClInclude Include="winds.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

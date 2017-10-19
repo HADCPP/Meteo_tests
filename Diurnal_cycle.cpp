@@ -44,11 +44,11 @@ namespace INTERNAL_CHECKS
 			int iteration = 1;
 			varrayfloat h_filter_data;
 			int val_index = 0;
-			for (int i = 0; i < filtered_data.data().size(); i++)
+			for (int i = 0; i < filtered_data.m_data.size(); i++)
 			{
 				if (iteration <= 24)
 				{
-					h_filter_data[val_index] = filtered_data.data()[i];
+					h_filter_data[val_index] = filtered_data.m_data[i];
 					iteration++;
 				}
 				else
@@ -56,7 +56,7 @@ namespace INTERNAL_CHECKS
 					v_filtered_data.push_back(h_filter_data);
 					val_index=0;
 					
-					h_filter_data[val_index] = filtered_data.data()[i];
+					h_filter_data[val_index] = filtered_data.m_data[i];
 					iteration = 2;
 				}
 
@@ -272,7 +272,7 @@ namespace INTERNAL_CHECKS
 				{
 					if (to_flag[d] == 1)
 					{
-						varrayfloat dummy(1., filtered_data.data().size());      //filtered data ne contient aucune donnée masquée
+						varrayfloat dummy(1., filtered_data.m_data.size());      //filtered data ne contient aucune donnée masquée
 						dcc_flags.push_back(dummy);
 						dummy.free();
 					}

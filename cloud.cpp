@@ -62,15 +62,15 @@ namespace INTERNAL_CHECKS
 
 		varraysize low_full_locs = npwhere(low.getAllData(), float(8), '=');
 
-		valarray<bool> dummy = mid.getAllData().mask()[low_full_locs];
+		valarray<bool> dummy = mid.getAllData().m_mask[low_full_locs];
 		varraysize	bad_mid = npwhere(dummy, true, "!");
 		
 		low_full_locs = low_full_locs[bad_mid];
 
 		station.setQc_flags(float(1), low_full_locs, flag_col);
 
-		dummy.resize(mid.getAllData().mask().size());
-		dummy = high.getAllData().mask()[low_full_locs];
+		dummy.resize(mid.getAllData().m_mask.size());
+		dummy = high.getAllData().m_mask[low_full_locs];
 		varraysize	bad_high = npwhere(dummy, true, "!");
 		low_full_locs = low_full_locs[bad_high];
 		station.setQc_flags(float(1), low_full_locs, flag_col);
@@ -90,7 +90,7 @@ namespace INTERNAL_CHECKS
 
 		varraysize mid_full_locs = npwhere(mid.getAllData(), float(8), '=');
 
-		valarray<bool> dummy = high.getAllData().mask()[mid_full_locs];
+		valarray<bool> dummy = high.getAllData().m_mask[mid_full_locs];
 		varraysize	bad_high = npwhere(dummy, true, "!");
 		/*dummy.free();*/
 		mid_full_locs = mid_full_locs[bad_high];

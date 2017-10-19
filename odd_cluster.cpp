@@ -187,7 +187,7 @@ namespace INTERNAL_CHECKS
 			int obs_type = 1;
 			for (int time : station.getTime_data())
 			{
-				if (filtered_data.mask()[time] == false)
+				if (filtered_data.m_mask[time] == false)
 				{
 					//process observation point 
 					switch (obs_type)

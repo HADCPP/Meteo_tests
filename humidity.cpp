@@ -51,7 +51,7 @@ namespace INTERNAL_CHECKS
 		{
 			if (tt > 0 && tt < times[times.size() - 1])
 			{
-				if (dpds.mask()[t] == false)
+				if (dpds.m_mask[t] == false)
 				{
 					//if change in DPD, examine previous string
 					if (dpds[t] != last_dpds)
@@ -61,7 +61,7 @@ namespace INTERNAL_CHECKS
 						{
 							float abs_diff;
 							CMaskedArray<float> these_dpds = dpds(start_loc, t);
-							varraysize good = npwhere(these_dpds.mask(), false, "=");
+							varraysize good = npwhere(these_dpds.m_mask, false, "=");
 							if (T[t] >= 0)
 								abs_diff = 0.25;
 							else
@@ -120,8 +120,8 @@ namespace INTERNAL_CHECKS
 			CMaskedArray<float> this_month_T = T(month->first, month->second);
 			CMaskedArray<float> this_month_D = D(month->first, month->second);
 
-			varraysize goodT = npwhere(this_month_T.mask(), false, "=");
-			varraysize goodD = npwhere(this_month_D.mask(), false, "=");
+			varraysize goodT = npwhere(this_month_T.m_mask, false, "=");
+			varraysize goodD = npwhere(this_month_D.m_mask, false, "=");
 
 			//check if more than 112 obs(4 / d * 28 d)
 			if (goodT.size() > 112)
@@ -129,7 +129,7 @@ namespace INTERNAL_CHECKS
 				//run through each bin
 				for (size_t bin : bins)
 				{
-					varraysize bin_locs = npwhereAnd(this_month_T.data(), float(bin), float(bin + binwidth), ">=", "<");
+					varraysize bin_locs = npwhereAnd(this_month_T.m_data, float(bin), float(bin + binwidth), ">=", "<");
 					// if data in this bin
 					if (bin_locs.size() > 20)
 					{
@@ -138,11 +138,11 @@ namespace INTERNAL_CHECKS
 						CMaskedArray<float> binD = this_month_D[bin_locs];
 
 						// find good temperatures
-						varraysize good_binT = npwhere(binT.mask(), false, "=");
-						varraysize good_binD = npwhere(binD.mask(), false, "=");
+						varraysize good_binT = npwhere(binT.m_mask, false, "=");
+						varraysize good_binD = npwhere(binD.m_mask, false, "=");
 							
 						//and the bad dewpoints coincident with the good temperatures
-						valarray<bool> dummy = binD.mask()[good_binT];
+						valarray<bool> dummy = binD.m_mask[good_binT];
 						varraysize bad_binD_T = npwhere(dummy, false, "=");
 
 						if (bad_binD_T.size() != 0)

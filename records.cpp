@@ -112,7 +112,7 @@ namespace INTERNAL_CHECKS
 			CMetVar& st_var = station.getMetvar(variable);
 			string st_region = krc_get_wmo_region(station.getWmoId());
 			CMaskedArray<float> all_filtered = UTILS::apply_filter_flags(st_var);
-			varraysize too_high = PYTHON_FUNCTION::npwhere<float>(all_filtered.data(), maxes[variable][st_region], ">");
+			varraysize too_high = PYTHON_FUNCTION::npwhere<float>(all_filtered.m_data, maxes[variable][st_region], ">");
 			krc_set_flags(too_high, station, flag_col[v]);
 			//make sure that don"t flag the missing values!
 			varraysize too_low = PYTHON_FUNCTION::npwhere(all_filtered, mins[variable][st_region], '<');

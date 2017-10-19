@@ -43,7 +43,7 @@ namespace FREQUENT_VALUES
 		{
 			CMetVar & st_var = station.getMetvar(variable);
 			CMaskedArray<float> filtered_data = apply_filter_flags(st_var);
-			float  reporting_accuracy = UTILS::reporting_accuracy(filtered_data.data());
+			float  reporting_accuracy = UTILS::reporting_accuracy(filtered_data.m_data);
 
 			//apply flags - for detection only   (filtered_data)
 			varrayfloat season_data;
@@ -53,7 +53,7 @@ namespace FREQUENT_VALUES
 				if (season == 0)
 				{
 					//all year
-					season_data = PYTHON_FUNCTION::masked_values<float>(filtered_data.data(), st_var.getFdi());
+					season_data = PYTHON_FUNCTION::masked_values<float>(filtered_data.m_data, st_var.getFdi());
 					thresholds[0] = 30;
 					thresholds[1] = 20;
 					thresholds[2] = 10;
@@ -71,30 +71,30 @@ namespace FREQUENT_VALUES
 						//churn through months extracting data, accounting for fdi and concatenating together
 						if (season == 1) // mars,avril,may
 						{
-							varrayfloat new_filtered_data = filtered_data.data()[std::slice((*year)[2].first, 6, 1)];
+							varrayfloat new_filtered_data = filtered_data.m_data[std::slice((*year)[2].first, 6, 1)];
 							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							//std::copy(std::begin(new_filtered_data), std::end(new_filtered_data), std::end(season_data));
 							season_data = season_data + new_filtered_data; //fonction pour concatener 
 						}
 						else if (season == 2) //june, july, august
 						{
-							varrayfloat new_filtered_data = filtered_data.data()[std::slice((*year)[5].first, 6, 1)];
+							varrayfloat new_filtered_data = filtered_data.m_data[std::slice((*year)[5].first, 6, 1)];
 							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data, new_filtered_data);
 
 						}
 						else if (season == 3) // september,october,november
 						{
-							varrayfloat new_filtered_data = filtered_data.data()[std::slice((*year)[8].first, 6, 1)];
+							varrayfloat new_filtered_data = filtered_data.m_data[std::slice((*year)[8].first, 6, 1)];
 							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data, new_filtered_data);
 						}
 						else //december + january,februay
 						{
-							varrayfloat new_filtered_data = filtered_data.data()[std::slice((*year)[0].first, 4, 1)];
+							varrayfloat new_filtered_data = filtered_data.m_data[std::slice((*year)[0].first, 4, 1)];
 							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data, new_filtered_data);
-							new_filtered_data = filtered_data.data()[std::slice((*year)[11].first, 2, 1)];
+							new_filtered_data = filtered_data.m_data[std::slice((*year)[11].first, 2, 1)];
 							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 							PYTHON_FUNCTION::concatenate(season_data, new_filtered_data);
 						}
@@ -167,12 +167,12 @@ namespace FREQUENT_VALUES
 						}
 						else if (season == 4)//december + january,februay
 						{
-							varrayfloat new_filtered_data = filtered_data.data()[std::slice((*year)[0].first, 4, 1)];
+							varrayfloat new_filtered_data = filtered_data.m_data[std::slice((*year)[0].first, 4, 1)];
 							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 
 							year_data = new_filtered_data;
 
-							new_filtered_data = filtered_data.data()[std::slice((*year)[11].first, 2, 1)];
+							new_filtered_data = filtered_data.m_data[std::slice((*year)[11].first, 2, 1)];
 							new_filtered_data = PYTHON_FUNCTION::masked_values(new_filtered_data, st_var.getFdi());
 
 							PYTHON_FUNCTION::concatenate(year_data, new_filtered_data);

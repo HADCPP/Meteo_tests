@@ -20,9 +20,9 @@ namespace INTERNAL_CHECKS
 		vector<int> string_length;
 		//run through all obs
 		int o = 0;
-		for (float obs : all_filtered.data())
+		for (float obs : all_filtered.m_data)
 		{
-			if (all_filtered.mask()[0] == false)
+			if (all_filtered.m_mask[0] == false)
 			{
 				if (obs != prev_value)
 				{
@@ -56,9 +56,9 @@ namespace INTERNAL_CHECKS
 		for (int y = 0; y < m_month_starts.size(); y++)
 		{
 			if (y != m_month_starts.size() - 1)
-				year.data() = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
+				year.m_data = all_filtered.m_data[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
 			else
-				year.data() = all_filtered.data()[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
+				year.m_data = all_filtered.m_data[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
 			if (year.compressed().size() >= 200)
 			{
 				varraysize string_starts(value_starts.size());
@@ -106,7 +106,7 @@ namespace INTERNAL_CHECKS
 					for (size_t loc : locs)
 					{
 						//need to account for missing values here
-						valarray<bool> dummy = all_filtered.mask()[std::slice(value_starts[loc], all_filtered.mask().size() - value_starts[loc], 1)];
+						valarray<bool> dummy = all_filtered.m_mask[std::slice(value_starts[loc], all_filtered.m_mask.size() - value_starts[loc], 1)];
 						varraysize goods = npwhere(dummy, false, "=");
 						varraysize dum = goods[std::slice(0, value_lengths[loc], 1)];
 						dum += value_starts[loc];
@@ -155,9 +155,9 @@ namespace INTERNAL_CHECKS
 		//storage for excess over years
 
 		int o = 0;
-		for (float obs : all_filtered.data())
+		for (float obs : all_filtered.m_data)
 		{
-			if (all_filtered.mask()[o] == false)
+			if (all_filtered.m_mask[o] == false)
 			{
 				if (obs != prev_value)
 				{
@@ -210,7 +210,7 @@ namespace INTERNAL_CHECKS
 	void rsc_whole_day_repeats(vector<CMaskedArray<float>>& data, int n_wday, varrayfloat& day_flags)
 	{
 		
-		valarray<varrayfloat> flags(data[0].data(), data.size());
+		valarray<varrayfloat> flags(data[0].m_data, data.size());
 		vector<int > ndays;
 		int nday;
 		varrayfloat prev_day(data[0].size());
@@ -218,13 +218,13 @@ namespace INTERNAL_CHECKS
 		{
 			if (day == 0)
 			{
-				prev_day = data[day].data();
+				prev_day = data[day].m_data;
 				nday = 1;
 				continue;
 			}
 			else
 			{
-				varraysize matches = npwhere(prev_day, data[day].data(), "=");
+				varraysize matches = npwhere(prev_day, data[day].m_data, "=");
 				//if this day matches previous one(not IDL wording, but matches logic)
 				if (matches.size() == 24)
 				{
@@ -241,7 +241,7 @@ namespace INTERNAL_CHECKS
 				else
 				{
 					ndays.push_back(nday);
-					prev_day = data[day].data();
+					prev_day = data[day].m_data;
 					nday = 1;
 				}
 				nday++;
@@ -271,7 +271,7 @@ namespace INTERNAL_CHECKS
 			for (int day = 0; day < h_hourly_data.size(); ++day)
 			{
 				//for each day at each given hour
-				if (h_hourly_data[day].mask()[hour] == false)
+				if (h_hourly_data[day].m_mask[hour] == false)
 				{
 					if (h_hourly_data[day][hour] != match_values)
 					{
@@ -366,7 +366,7 @@ namespace INTERNAL_CHECKS
 				bool winddir = false;
 				if (variable == "winddirs") wind = true;
 
-				float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var).data(), winddir);
+				float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var).m_data, winddir);
 				array<int,4> limits = limits_dict[variable][reporting_resolution];
 
 				// need to apply flags to st_var.flags each time for filtering

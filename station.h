@@ -49,12 +49,13 @@ public:
 	void setFlagged_value(float flagged_value){ m_flagged_value = flagged_value; }
 	void setFlags(varrayfloat flag){ m_flags = flag; }
 	void setFlags(varraysize v_flag,float flag){ m_flags[v_flag] = flag; }
-	void setData(varrayfloat data){ m_data.data() = data; }
-	void setData(varraysize data,float val){ m_data.data()[data] = val; }
-	void setData(CMaskedArray<float> data){ m_data=data; }
+	void setData(varrayfloat data){ m_dataVar.m_data = data; }
+	void setData(varraysize data, float val){ m_dataVar.m_data[data] = val; }
+	void setData(CMaskedArray<float> data){ m_dataVar = data; }
 	void setData(varraysize indices,float value,bool mask)
-	{ m_data.data()[indices] = value; 
-		m_data.mask()[indices] = mask;
+	{
+		m_dataVar.m_data[indices] = value;
+		m_dataVar.m_mask[indices] = mask;
 	}
 	std::string getMdi(){ return m_mdi; }
 	float getFdi(){ return m_fdi; }
@@ -62,8 +63,8 @@ public:
 	std::string getStandardname(){ return m_standard_name; }
 	varrayfloat getFlagged_obs(){ return m_flagged_obs; }
 	varrayfloat getReportingStats(){ return m_reporting_stats; }
-	varrayfloat getData(){ return m_data.data(); }
-	CMaskedArray<float>  getAllData(){ return m_data; }
+	varrayfloat getData(){ return m_dataVar.m_data; }
+	CMaskedArray<float>  getAllData(){ return m_dataVar; }
 	varrayfloat getFlags(){ return m_flags; }
 	std::string getValidMax(){return m_valid_max ; }
 	std::string getValidMin(){return m_valid_min ; }
@@ -99,7 +100,7 @@ protected :
 	float m_flagged_value;
 	varrayfloat m_reporting_stats;
 	varrayfloat m_flags;
-	CMaskedArray<float> m_data;
+	CMaskedArray<float> m_dataVar;
 	std::valarray <float> m_flagged_obs;
 };
 

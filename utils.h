@@ -49,7 +49,17 @@ namespace UTILS
 
 	: output : resolution - reporting accuracy(resolution) of data
 	*/
-	 float reporting_accuracy(varrayfloat& good_values, bool winddir = false);
+	float reporting_accuracy(varrayfloat& good_values, bool winddir = false);
+
+	/*
+		Following reporting_accuracy.pro method.
+		Uses histogram of remainders to look for special values
+
+		:param array indata: masked array
+		:output: frequency - reporting frequency of data
+	*/
+	int reporting_frequency(CMaskedArray<float>& good_indata);
+
 	void create_bins(varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters);
 
 	template<typename T>
@@ -133,14 +143,10 @@ namespace UTILS
 	{
 		return float(p(1)) * X + float(p(0));
 	}
-
-
-
+	
 	template<typename T>
 	inline float get_critical_values(std::vector<T>& indata, T binmin = T(0), T binwidth = T(1), float old_threshold = 0.)
 	{
-
-
 		float threshold;
 		if (indata.size() > 0)  //sort indata ?
 		{

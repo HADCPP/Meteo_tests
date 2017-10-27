@@ -27,7 +27,7 @@ public:
 		CMetVar::m_name = name;
 		CMetVar::m_long_name = long_name;
 		m_fdi = 0;
-		m_flagged_value = 0;
+		
 	}
 	
 
@@ -44,11 +44,10 @@ public:
 	void setFdi(float fdi){ m_fdi = fdi; }
 	void setCellmethods(std::string cell_methods){ m_cell_methods = cell_methods; }
 	void setStandard_name(std::string standard_name){ m_standard_name = standard_name; }
-	void setReportingStats(varrayfloat reporting_stats){ m_reporting_stats = reporting_stats; }
-	void setFlagged_obs(varrayfloat flagged_obs){ m_flagged_obs = flagged_obs; }
-	void setFlagged_value(float flagged_value){ m_flagged_value = flagged_value; }
-	void setFlags(varrayfloat flag){ m_flags = flag; }
-	void setFlags(varraysize v_flag,float flag){ m_flags[v_flag] = flag; }
+	void setReportingStats(std::valarray<std::pair<float, float>> reporting_stats){ m_reporting_stats = reporting_stats; }
+	void setFlagged_obs(CMaskedArray<float>  flagged_obs){ m_flagged_obs = flagged_obs; }
+	void setFlags(CMaskedArray<float> flag){ m_flags = flag; }
+	void setFlags(varraysize v_flag,float flag){ m_flags.m_data[v_flag] = flag; }
 	void setData(varrayfloat data){ m_dataVar.m_data = data; }
 	void setData(varraysize data, float val){ m_dataVar.m_data[data] = val; }
 	void setData(CMaskedArray<float> data){ m_dataVar = data; }
@@ -61,11 +60,12 @@ public:
 	float getFdi(){ return m_fdi; }
 	std::string getDtype(){ return m_dtype; }
 	std::string getStandardname(){ return m_standard_name; }
-	varrayfloat getFlagged_obs(){ return m_flagged_obs; }
-	varrayfloat getReportingStats(){ return m_reporting_stats; }
-	varrayfloat getData(){ return m_dataVar.m_data; }
+	CMaskedArray<float> getFlagged_obs(){ return m_flagged_obs; }
+	std::valarray<std::pair<float, float>> getReportingStats(){ return m_reporting_stats; }
+	varrayfloat& getData(){ return m_dataVar.m_data; }
+	const varrayfloat& getData()const{ return m_dataVar.m_data; }
 	CMaskedArray<float>  getAllData(){ return m_dataVar; }
-	varrayfloat getFlags(){ return m_flags; }
+	CMaskedArray<float> getFlags(){ return m_flags; }
 	std::string getValidMax(){return m_valid_max ; }
 	std::string getValidMin(){return m_valid_min ; }
 	std::string getCoordinates(){ return m_coordinates; }
@@ -96,12 +96,11 @@ protected :
 	std::string m_valid_min;
 	std::string m_coordinates;
 	std::string m_cell_methods;
-	float m_fdi;
-	float m_flagged_value;
-	varrayfloat m_reporting_stats;
-	varrayfloat m_flags;
+	float m_fdi;// Flagged value
+	std::valarray<std::pair<float, float>> m_reporting_stats;
+	CMaskedArray<float> m_flags;
 	CMaskedArray<float> m_dataVar;
-	std::valarray <float> m_flagged_obs;
+	CMaskedArray<float>  m_flagged_obs;
 };
 
 
@@ -125,17 +124,27 @@ public:
 		void setQc_flags(float value, varraysize indices, int index){ m_qc_flags[index][indices] = value; }
 		void setQc_flags(varrayfloat valar, varraysize indices, int index){ m_qc_flags[index][indices] = valar; }
 		void setQc_flags(varrayfloat qc_flags, std::slice indices, int index){ m_qc_flags[index][indices] = qc_flags; }
-		std::vector<varrayfloat>& getQc_flags(){ return m_qc_flags; }
+		void setQc_flags(std::valarray<varrayfloat> qc_flags){ m_qc_flags = qc_flags; }
+		std::valarray<varrayfloat>& getQc_flags(){ return m_qc_flags; }
 		varrayfloat& getQc_flags(int v){ return m_qc_flags[v]; }
 		void setMetVar(CMetVar metvar, std::string var){ (m_Met_var)[var] = metvar; }
 		CMetVar& getMetvar(std::string var){ return m_Met_var[var]; }
 		void setTime_units(std::string units){ m_time.units = units; }
-		void setTime_data(std::vector<int> data){ copy(data.begin(), data.end(), std::back_inserter(m_time.data)); }
+		void setTime_data(std::valarray<int> data){ std::copy(std::begin(data), std::end(data), std::back_inserter(m_time.data)); }
 		std::string getTime_units()const{ return m_time.units; }
 		const std::vector<int>& getTime_data()const{ return m_time.data; }
 		void setHistory(std::string history){ m_history = history; }
 		const std::string& getHistory()const{ return m_history; }
-
+		void InitializeQcFlags(size_t line, size_t col)
+		{
+			std::valarray<varrayfloat> qc(line);
+			varrayfloat news(col);
+			for (size_t i = 0; i< line; ++i)
+			{
+				qc[i] = news;
+			}
+			m_qc_flags = qc;
+		}
 
 		std::string toString();
 		
@@ -148,7 +157,7 @@ protected:
 	double m_lat;
 	double m_lon;
 	double m_elev;
-	std::vector<varrayfloat> m_qc_flags;
+	std::valarray<varrayfloat> m_qc_flags;
 	std::map<std::string, CMetVar >  m_Met_var;
 	s_time m_time;
 	std::string m_history;

@@ -87,7 +87,7 @@ namespace INTERNAL_CHECKS
 
 								if (fog.size() >= 1)
 								{
-									if (fog.size() / float(good.size()) < 0.333)
+									if (1.*fog.size() / good.size() < 0.333)
 									{
 										flags[std::slice(start_loc, t, 1)] = 1;  
 									}		

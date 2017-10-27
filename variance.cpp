@@ -20,43 +20,10 @@ namespace INTERNAL_CHECKS
 
 			int  reporting_freq = reporting_frequency(apply_filter_flags(st_var));
 			map<int, int> month_ranges = month_starts_in_pairs(start, end);
-			// array de taille 12*43*2 où chaque ligne correspond à un mois
+			
 			std::vector<std::valarray<pair<int, int>>> month_ranges_years;
+			reshapeMonth(month_ranges_years, month_ranges);
 			int taille = int(month_ranges.size() / 12);
-			std::valarray<pair<int, int>> month(taille);
-			int index = 0;
-			int compteur = 0;
-			int iteration = 1;
-			map<int, int>::iterator month_it = month_ranges.begin();
-			for (int i = 0; i < month_ranges.size(); i += 12)
-			{
-				if (iteration <= taille && i < month_ranges.size() && compteur < 12)
-				{
-					month[index++] = make_pair(month_it->first, month_it->second);
-					iteration++;
-					if (i + 12 < month_ranges.size()) std::advance(month_it, 12);
-				}
-				else
-				{
-					if (compteur == 12) break;
-					month_ranges_years.push_back(month);
-					compteur++;
-					month.resize(taille);
-					index = 0;
-					i = month_ranges_years.size();
-					month_it = month_ranges.begin();
-					std::advance(month_it, i);
-					month[index++] = make_pair(month_it->first, month_it->second);
-					std::advance(month_it, 12);
-					iteration = 2;
-				}
-				if (i + 12 >= month_ranges.size() && compteur < 12)
-				{
-					i = month_ranges_years.size();
-					month_it = month_ranges.begin();
-					std::advance(month_it, i + 1);
-				}
-			}
 
 			std::vector<varrayfloat> month_data_count;
 			for (size_t i = 0; i < 12; ++i)

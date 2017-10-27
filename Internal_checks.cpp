@@ -84,11 +84,16 @@ namespace INTERNAL_CHECKS
 				match_to_compress = UTILS::create_fulltimes(station,process_var, DATESTART, DATEEND, carry_thru_vars);
 
 				//Initialiser CStation.qc_flags
+
+				station.InitializeQcFlags(station.getTime_data().size(), 69);
+
 				for (string var : process_var)
 				{
 					CMetVar& st_var = station.getMetvar(var);
+					st_var.setReportingStats(UTILS::monthly_reporting_statistics(st_var, DATESTART, DATEEND));
 				}
 			}
+			//or if second pass through?
 			else if (second)
 			{
 				string filename = NETCDF_DATA_LOCS + (station).getId() + "_mask.nc";
@@ -110,19 +115,19 @@ namespace INTERNAL_CHECKS
 				//Appel à la fonction duplicate_months de qc_tests
 				vector<string> variable_list = { "temperatures" };
 				
-				DUPLICATE_MONTHS::dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile);
+				dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile);
 			}
 			if (mytest.odd)
 			{
 				vector<string> variable_list = { "temperatures","dewpoints","windspeeds","slp"};
 				vector<int> flag_col = { 54, 55, 56, 57 };
-				occ(station, variable_list, flag_col, logfile, second);
+				//occ(station, variable_list, flag_col, logfile, second);
 				UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.frequent)
 			{
 				
-				FREQUENT_VALUES::fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
+				//FREQUENT_VALUES::fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
 			}
 			if (mytest.diurnal)
 			{
@@ -133,13 +138,13 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.records)
 			{
-				krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
+				//krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
 				UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.streaks)
 			{
-				rsc(station, { "temperatures", "dewpoints", "windspeeds", "slp", "winddirs" }, { { 12, 16, 20 }, { 13, 17, 21 }, { 14, 18, 22 }, { 15, 19, 23 }, { 66, 67, 68 } },
-					DATESTART, DATEEND,logfile);
+				/*rsc(station, { "temperatures", "dewpoints", "windspeeds", "slp", "winddirs" }, { { 12, 16, 20 }, { 13, 17, 21 }, { 14, 18, 22 }, { 15, 19, 23 }, { 66, 67, 68 } },
+				DATESTART, DATEEND,logfile);*/
 				UTILS::apply_windspeed_flags_to_winddir(station);
 
 			}
@@ -149,7 +154,7 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.spike)
 			{
-				sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
+				//sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
 				UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.humidity)
@@ -158,7 +163,7 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.cloud)
 			{
-				ccc(station, { 33,34, 35, 36, 37, 38, 39, 40 }, logfile);
+				//ccc(station, { 33,34, 35, 36, 37, 38, 39, 40 }, logfile);
 			}
 			if (mytest.variance)
 			{

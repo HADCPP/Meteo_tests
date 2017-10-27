@@ -128,5 +128,8 @@
     <ClInclude Include="winds.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="distributional_gap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

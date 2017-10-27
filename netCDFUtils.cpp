@@ -471,6 +471,8 @@ namespace NETCDFUTILS
 						this_var.setMdi("-1e30");
 					else if ((*variable) == "input_station_id")
 						this_var.setMdi("null");
+					else if ((*variable) == "total_cloud_cover")
+						this_var.setMdi("-999");
 				}
 				//Attribut valid_max
 				try{ this_var.setValidMax(to_string(getAttribute<float>(var,"valid_max"))); }
@@ -499,15 +501,15 @@ namespace NETCDFUTILS
 				try
 				{
 					//this_var.setFlagged_value(static_cast<float>(atof(getAttribute<string>(var, "flagged_value").c_str())));
-					this_var.setFlagged_value(getAttribute<float>(var, "flagged_value"));
+					this_var.setFdi(getAttribute<float>(var, "flagged_value"));
 				}
 				catch (NcException& e)
 				{
 					cerr << 8 << "	" << *variable << e.what() << endl;
 					if (*variable == "temperatures" || *variable == "dewpoints" || *variable == "slp" || *variable == "windspeeds")
-						this_var.setFlagged_value (float(-2.e30));
+						this_var.setFdi (float(-2.e30));
 					else
-						this_var.setFlagged_value(-888);
+						this_var.setFdi(-888);
 				}
 				//Ajouter la variable méteo à la liste des variables de la station stat
 				station.setMetVar(this_var, *variable);
@@ -560,16 +562,17 @@ namespace NETCDFUTILS
 				cout << "no reporting stats available in netcdf file" << endl;
 			else
 			{
-				NcVar reportings_stats = ncFile.getVar("reporting_stats");
+
+			/*	NcVar reportings_stats = ncFile.getVar("reporting_stats");
 				float *reporting = new float[process_var.size()];
 				reportings_stats.getVar(reporting);
 				int v = 0;
 				for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); ++var,v++)
 				{
-					varrayfloat report{ reporting[v] };
+					valarray<pair<float,float>> report{ reporting[v] };
 					station.getMetvar(*var).setReportingStats(report);
 				}
-				delete[] reporting;
+				delete[] reporting;*/
 			}
 			
 			
@@ -756,13 +759,13 @@ namespace NETCDFUTILS
 		//combine all reporting accuracies together to output as single array in netcdf file - if available
 		try
 		{
-			varrayfloat reporting_stats;
+			std::vector<valarray<std::pair<float,float>>>  reporting_stats;
 			
 			for (string var : var_list)
 			{
 				CMetVar &st_var = station.getMetvar(var);
 				//std::copy(begin(st_var->getReportingStats()), end(st_var->getReportingStats()), std::back_inserter(reporting_stats)) ;
-				reporting_stats = reporting_stats + st_var.getReportingStats();
+				reporting_stats.push_back(st_var.getReportingStats());
 			}
 			vector<NcDim> reporting_dims;
 			reporting_dims.push_back(reportingV_dim);

@@ -12,35 +12,38 @@
 
 typedef dlib::matrix<double, 1, 1> input_vector;
 typedef dlib::matrix<double, 2, 1> parameter_vector;
+typedef dlib::matrix<double, 3, 1> parameter_vector1;
 
 
 namespace UTILS
 {
 	void  month_starts(boost::gregorian::date start, boost::gregorian::date end, std::vector<int>& month_locs);
 	inline std::map<int, int> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end);
-	std::valarray<bool> create_fulltimes(CStation& station, std::vector<std::string> var_list, boost::gregorian::date start,
-		boost::gregorian::date end, std::vector<std::string> opt_var_list, bool do_input_station_id = true,
-		bool do_qc_flags = true, bool do_flagged_obs = true);
-	void monthly_reporting_statistics(const CMetVar& st_var, boost::gregorian::date start, boost::gregorian::date end);
+	std::valarray<bool> create_fulltimes(CStation& station, std::vector<std::string>& var_list, boost::gregorian::date start,
+		boost::gregorian::date end, std::vector<std::string>& opt_var_list, bool do_input_station_id = true,
+bool do_qc_flags = true, bool do_flagged_obs = true);
+	/*
+	Return reporting accuracy & reporting frequency for variable
+
+	: param obj st_var :	CStation variable object
+	: param datetime start : start of data series
+	: param datatime end :  end of data series
+
+	: returns :
+	 reporting_stats - Nx2 array, one pair for each month
+	'''
+	*/
+	std::valarray<std::pair<float, float>> monthly_reporting_statistics(CMetVar& st_var, boost::gregorian::date start, boost::gregorian::date end);
 	void print_flagged_obs_number(std::ofstream & logfile, std::string test, std::string variable, int nflags, bool noWrite=false);
 	void apply_flags_all_variables(CStation& station, std::vector<std::string> full_variable_list, int flag_col, std::ofstream & logfile, std::string test);
 	void apply_windspeed_flags_to_winddir(CStation& station);
 	void append_history(CStation& station, std::string text);
 	CMaskedArray<float>  apply_filter_flags(CMetVar& st_var);
 	void print_flagged_obs_number(std::ofstream& logfile, std::string test, std::string variable, int nflags, bool noWrite);
-	inline float __cdecl MyApplyRoundFunc(float n)
-	{
-		return std::floor(n);
-	}
+	inline float __cdecl MyApplyRoundFunc(float n){return std::floor(n);}
 	template<typename T>
-	inline T __cdecl MyApplyAbsFunc(T n)
-	{
-		return std::abs(n);
-	}
-	inline float __cdecl Log10Func(float n)
-	{
-		return std::log10f(n);
-	}
+	inline T __cdecl MyApplyAbsFunc(T n){return std::abs(n);}
+	inline float __cdecl Log10Func(float n){return std::log10f(n);}
 	/*
 	Uses histogram of remainders to look for special values
 
@@ -49,7 +52,7 @@ namespace UTILS
 
 	: output : resolution - reporting accuracy(resolution) of data
 	*/
-	float reporting_accuracy(varrayfloat& good_values, bool winddir = false);
+	inline float reporting_accuracy(CMaskedArray<float>& indata, bool winddir = false);
 
 	/*
 		Following reporting_accuracy.pro method.
@@ -58,7 +61,7 @@ namespace UTILS
 		:param array indata: masked array
 		:output: frequency - reporting frequency of data
 	*/
-	int reporting_frequency(CMaskedArray<float>& good_indata);
+	inline float reporting_frequency(CMaskedArray<float>& good_indata);
 
 	void create_bins(varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters);
 
@@ -69,10 +72,7 @@ namespace UTILS
 		return indata[indata.size() / 2];
 	}
 	template<typename T, typename S>
-	inline T Cast(const S &data)
-	{
-		return static_cast<T>(data);
-	}
+	inline T Cast(const S &data){return static_cast<T>(data);}
 	template<typename T>
 	inline T Cast(const std::string &data)
 	{
@@ -105,6 +105,21 @@ namespace UTILS
 
 		return temp*temp;
 	}
+	inline double model1(const input_vector&  input, const parameter_vector1& params)
+	{
+		/*	p[0] = mean
+			p[1] = sigma
+			p[2] = normalisation
+		*/
+		const double p0 = params(0);
+		const double p1 = params(1);
+		const double p2 = params(2);
+
+		const double X = input(0);
+		const double temp = p2*(std::exp(-(X-p0)*(X-p0)))/(2*p1*p1);
+
+		return temp;
+	}
 	// ----------------------------------------------------------------------------------------
 
 	// This function is the "residual" for a least squares problem.   It takes an input/output
@@ -114,6 +129,10 @@ namespace UTILS
 	inline double residual(const std::pair<input_vector, double>& data, const parameter_vector& params)
 	{
 		return model(data.first, params) - data.second;
+	}
+	inline double residual1(const std::pair<input_vector, double>& data, const parameter_vector1& params)
+	{
+		return model1(data.first, params) - data.second;
 	}
 	// ----------------------------------------------------------------------------------------
 	// This function is the derivative of the residual() function with respect to the parameters.
@@ -129,9 +148,27 @@ namespace UTILS
 
 		const double temp = p0*i0 + p1;
 
-		der(0) = i0 * 2 * temp;
-		der(1) = 2 * temp;
+		der(0) = i0; // i0 * 2 * temp;
+		der(1) = 0; // 2 * temp;
 
+		return der;
+	}
+	inline parameter_vector1 residual_derivative1(const std::pair<input_vector, double>& data, const parameter_vector1& params)
+	{
+		parameter_vector1 der(3);
+
+		const double p0 = params(0);
+		const double p1 = params(1);
+		const double p2 = params(2);
+
+		const double X = data.first(0);
+
+		const double temp = std::exp(-(X - p0)*(X - p0));
+
+		der(0) = -2*(X-p0)*p2*temp/(2*p1*p1); 
+		der(1) =  -p2*temp/(p1*p1*p1);
+		der(2) = temp / (2 * p1*p1);
+		
 		return der;
 	}
 	/*
@@ -198,7 +235,7 @@ namespace UTILS
 
 				dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
 					residual,
-					dlib::derivative(residual),
+					residual_derivative,
 					data,
 					fit);
 				varrayfloat fit_curve = linear(full_edges, fit);
@@ -329,5 +366,43 @@ namespace UTILS
 	inline float percentiles(varrayfloat& data, float percent, bool idl=false);
 	void winsorize(varrayfloat& data, float percent, bool idl = false);
 	float IQR(varrayfloat data, double percentile = 0.25);
+	// array de taille 12*nombre d'années où chaque ligne correspond à un mois
+	void reshapeMonth(std::vector<std::valarray<std::pair<int, int>>>& month_ranges_years, std::map<int, int>&  month_ranges);
+	// array de taille (nombre d'années*12 où chaque ligne correspond à une année
+	void reshapeYear(std::vector<std::vector<std::pair<int, int>>>& month_ranges_years, std::map<int, int>&  month_ranges);
+	/*Fit a straight line to the data provided
+		Inputs:
+		  x - x-data
+		  y - y-data
+		  norm - norm
+		Outputs:
+		  fit - array of [mu,sigma,norm]
+	*/
+	inline varrayfloat fit_gaussian(varrayfloat& x, varrayfloat& y, double norm, double mu, double sig)
+	{
+		parameter_vector1  fit;
+		fit(0) = mu;
+		fit(1) = sig;
+		fit(3) = norm;
+		// DATA (X,Y)
 
+		std::vector<std::pair<input_vector, double>> data;
+		input_vector input;
+		for (size_t i = 0; i < x.size(); ++i)
+		{
+			input(0) = x[i];
+			data.push_back(std::make_pair(input, y[i]));
+		}
+
+		dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
+			residual1,
+			residual_derivative1,
+			data,
+			fit);
+		varrayfloat fits(3);
+		fits[0] = fit(0);
+		fits[1] = fit(1);
+		fits[2] = fit(2);
+		return fits;
+	}
 }

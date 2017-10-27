@@ -23,7 +23,8 @@ public:
 	{
 		m_fill_value = static_cast<T>(1e20);
 		m_data = data;
-		m_mask = false;
+		m_mask.resize(data.size(),false);
+
 	}
 	CMaskedArray(T missing_value,std::valarray<T> data)
 	{
@@ -37,7 +38,15 @@ public:
 		m_fill_value = T(1e20);
 		m_data.resize(size);
 		m_data = data;
+		m_mask.resize(size);
 		m_mask = false;
+	}
+	CMaskedArray(size_t  size)
+	{
+		m_fill_value = T(1e20);
+		m_data.resize(size);
+		m_mask.resize(size);
+		m_mask= false;
 	}
 	CMaskedArray(CMaskedArray const& mask_array_copy)
 	{
@@ -48,6 +57,10 @@ public:
 	}
 	
 	//T fill_value() const{ return m_fill_value; }
+	void fill(T value)
+	{
+		m_data = value;
+	}
 	T ma_sum()
 	{
 		T sum = 0;
@@ -319,8 +332,9 @@ namespace PYTHON_FUNCTION
 		std::copy(index.begin(), index.end(), std::begin(vec));
 		return vec;
 	}
+	
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(std::valarray<T>& v1, T value,const std::string condition)
+	inline std::valarray<std::size_t> npwhere(const std::valarray<T>& v1, T value, const std::string condition)
 	{
 		
 		std::vector<size_t> index;
@@ -331,10 +345,12 @@ namespace PYTHON_FUNCTION
 			}
 			
 		if (condition == "!")
+		{
 			for (size_t i = 0; i < v1.size(); i++)
 			{
 				if (v1[i] != value) index.push_back(i);
 			}
+		}
 		
 		if (condition == "<=")
 			for (size_t i = 0; i < v1.size(); i++)
@@ -359,14 +375,61 @@ namespace PYTHON_FUNCTION
 			{
 				if (v1[i] >= value) index.push_back(i);
 			}
-			std::valarray<std::size_t> vec(index.size());
-			std::copy(index.begin(), index.end(), std::begin(vec));
-			return vec;
+
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
 		
 		
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(std::vector<T> v1, T value, const std::string condition)
+	inline std::valarray<std::size_t> npwhere(const std::valarray<T>& v1, const std::string condition, const std::valarray<T>& v2)
+	{
+
+		std::vector<size_t> index;
+		if (condition == "=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] == v2[i]) index.push_back(i);
+			}
+
+		if (condition == "!")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] != v2[i]) index.push_back(i);
+			}
+
+		if (condition == "<=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] <= v2[i]) index.push_back(i);
+			}
+
+		if (condition == "<")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] < v2[i]) index.push_back(i);
+			}
+
+		if (condition == ">")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] > v2[i]) index.push_back(i);
+			}
+
+		if (condition == ">=")
+			for (size_t i = 0; i < v1.size(); i++)
+			{
+				if (v1[i] >= v2[i]) index.push_back(i);
+			}
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
+	}
+	template<typename T>
+	inline std::valarray<std::size_t> npwhere(const std::vector<T>& v1, T value, const std::string condition)
 	{
 
 		std::vector<size_t> index;
@@ -413,7 +476,7 @@ namespace PYTHON_FUNCTION
 
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(std::vector<T> v1, std::vector<T> v2, const std::string condition)
+	inline std::valarray<std::size_t> npwhere(const std::vector<T>& v1, const std::vector<T>& v2, const std::string condition)
 	{
 
 		std::vector<size_t> index;
@@ -460,7 +523,7 @@ namespace PYTHON_FUNCTION
 
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(std::valarray<T> v1, std::valarray<T> v2, const std::string condition)
+	inline std::valarray<std::size_t> npwhere(const std::valarray<T>& v1, const std::valarray<T>& v2, const std::string condition)
 	{
 
 		
@@ -689,6 +752,66 @@ namespace PYTHON_FUNCTION
 
 
 	}
+	template<typename T, typename S>
+	inline std::valarray<std::size_t> npwhereOr(std::valarray<T> v1, const std::string condition1, T value, std::valarray<S> v2, const std::string condition2, S value2)
+
+	{
+
+		std::vector<size_t> index;
+		if (condition1 == "=")
+		{
+			if (condition2 == "=")
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] == value || v2[i] == value2) index.push_back(i);
+				}
+		}
+		if (condition1 == "=")
+		{
+			if (condition2 == "!")
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] == value || v2[i] != value2) index.push_back(i);
+				}
+		}
+		if (condition1 == "<=")
+		{
+			if (condition2 == ">")
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] <= value || v2[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == "<")
+		{
+			if (condition2 == ">")
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value || v2[i]> value2) index.push_back(i);
+				}
+		}
+		if (condition1 == "<")
+		{
+			if (condition2 == ">=")
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value || v2[i] >= value2) index.push_back(i);
+				}
+		}
+		if (condition1 == "<=")
+		{
+			if (condition2 == ">=")
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value || v2[i] >= value2) index.push_back(i);
+				}
+		}
+		std::valarray<std::size_t> vec(index.size());
+		std::copy(index.begin(), index.end(), std::begin(vec));
+		return vec;
+
+
+	}
 	template<typename T>
 	inline std::valarray<std::size_t> npwhere( CMaskedArray<T>& v1, T value, char condition)
 	{
@@ -747,7 +870,7 @@ namespace PYTHON_FUNCTION
 	CMaskedArray<T> ma_masked_where(std::valarray<T> data,  T value, std::valarray<S> data2)
 	{
 
-		CMaskedArray<S> dummy = CMaskedArray<float>(data2);
+		CMaskedArray<S> dummy = CMaskedArray<S>(data2);
 		for (size_t i = 0; i < data.size(); i++)
 		{
 			if (data[i] == value)
@@ -980,6 +1103,16 @@ namespace PYTHON_FUNCTION
 		}
 		return j;
 	}
+	template<typename T>
+	inline T ma_min(CMaskedArray<T> indata)
+	{
+		return indata.compressed().min();
+	}
+	template<typename T>
+	inline T ma_max(CMaskedArray<T> indata)
+	{
+		return indata.compressed().max();
+	}
 	// recuperer l'indice du maximun de l'array (seule la première occurence est retournée)
 	inline int np_argmax(const varrayfloat& val)
 	{
@@ -1005,7 +1138,22 @@ namespace PYTHON_FUNCTION
 
 		return abs_value;
 	}
-	
+	//Calculer l'ecart-type
+	inline double stdev(varrayfloat&  indata,double mean)
+	{
+
+		double temp = 0.;
+		for (int i = 0; i < indata.size(); i++)
+		{
+			temp += (indata[i] - mean) * (indata[i] - mean);
+		}
+		return std::sqrt(temp / indata.size());
+	}
+
+	inline float Round(float value, int digits)
+	{
+		return floor(value * pow(10, digits) + value) / pow(10, digits);
+	}
 	template<typename T>
 	inline std::vector<T> np_ceil(std::vector<T> data)
 	{

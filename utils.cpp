@@ -80,11 +80,11 @@ namespace UTILS
 		return month_ranges;
 	}
 
-	valarray<bool> create_fulltimes(CStation& station, std::vector<string> var_list, boost::gregorian::date start, boost::gregorian::date end, std::vector<string> opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
+	valarray<bool> create_fulltimes(CStation& station, std::vector<string>& var_list, boost::gregorian::date start, boost::gregorian::date end, std::vector<string>& opt_var_list, bool do_input_station_id, bool do_qc_flags, bool do_flagged_obs)
 	{
 		//expand the time axis of the variables
 		boost::gregorian::date_duration DaysBetween = end - start;
-		varrayfloat fulltimes;
+		valarray<int> fulltimes;
 		
 		//adjust if input netCDF file has different start date to desired
 		string time_units = station.getTime_units();
@@ -94,94 +94,111 @@ namespace UTILS
 		time_units.erase(std::remove(time_units.begin(), time_units.end(), ' '), time_units.end());
 		boost::gregorian::date  netcdf_start = boost::gregorian::date_from_iso_string(time_units);
 		boost::gregorian::date_duration offset = start- netcdf_start;
-		fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24, offset.days() * 24);
+		
+		fulltimes = PYTHON_FUNCTION::arange<int>(DaysBetween.days() * 24, offset.days() * 24);
 
 		valarray<bool> match, match_reverse;
 
-		match = PYTHON_FUNCTION::in1D<float, float>(fulltimes, station.getMetvar("time").getData());
-		match_reverse = PYTHON_FUNCTION::in1D<float, float>(station.getMetvar("time").getData(), fulltimes);
+		match = PYTHON_FUNCTION::in1D<int, float>(fulltimes, station.getMetvar("time").getData());
+		match_reverse = PYTHON_FUNCTION::in1D<float, int>(station.getMetvar("time").getData(), fulltimes);
 
 		//if optional/carry through variables given, then set to extract these too
-		std::vector<string> full_var_list;
-		copy(var_list.begin(), var_list.end(), std::back_inserter(full_var_list));
-
+		std::vector<string> full_var_list = var_list;
+		
 		if (opt_var_list.size() != 0)
 		{
 			copy(opt_var_list.begin(), opt_var_list.end(), std::back_inserter(full_var_list));
 		}
-		std::vector<string> final_var_list;
-		copy(full_var_list.begin(), full_var_list.end(), std::back_inserter(final_var_list));
-		//if (do_input_station_id)  final_var_list.push_back("input_station_id");
+	
+		//if (do_input_station_id)  full_var_list.push_back("input_station_id");
 
-		for (std::vector<string>::iterator variable = final_var_list.begin(); variable != final_var_list.end(); variable++)
+		for (string variable : full_var_list)
 		{
-			CMetVar& st_var = station.getMetvar(*variable);
+			CMetVar& st_var = station.getMetvar(variable);
 			//use masked arrays for ease of filtering later
 			
-			varrayfloat valmask(static_cast<float>(atof(st_var.getMdi().c_str())), fulltimes.size());
+			CMaskedArray<float> news = CMaskedArray<float>(Cast<float>(st_var.getMdi()), fulltimes.size());
+			news.m_mask = true;
+			
 			if (match_reverse.size()!= 0)	
 			{
-				valmask = st_var.getData()[match_reverse];
-				 
+				varrayfloat dummy = st_var.getData()[match_reverse];
+				news.m_data[match] = dummy;
+				news.m_mask[match] = false;
 			}
 			//but re-mask those filled timestamps which have missing data
 						
-			station.getMetvar(*variable).setData(ma_masked_where(valmask,Cast<float>(st_var.getMdi()),valmask));
+			station.getMetvar(variable).setData(ma_masked_where<float,float>(news.m_data, Cast<float>(st_var.getMdi()), news.m_data));
 						
-			if (find(var_list.begin(), var_list.end(), *variable) != var_list.end() && do_flagged_obs == true)
+			if (find(var_list.begin(), var_list.end(), variable) != var_list.end() && do_flagged_obs == true)
 			{
 				//flagged values
-				valmask = static_cast<float>(atof(st_var.getMdi().c_str()));
-				varrayfloat v1;
+				news.m_data =Cast<float>(st_var.getMdi());
 				if (st_var.getFlagged_obs().size() != 0)
 				{
-					v1 = st_var.getFlagged_obs()[match_reverse];
-					valmask = v1;
+					varrayfloat dummy = st_var.getFlagged_obs().m_data[match_reverse];
+					news.m_data[match] = dummy;
 				}
-				st_var.setFlagged_obs(valmask);
-				// flags - for filtering
+				st_var.setFlagged_obs(news);
 
-				valmask = static_cast<float>(atof(st_var.getMdi().c_str()));
+				//flags - for filtering
+				news.m_data = Cast<float>(st_var.getMdi());
 				if (st_var.getFlags().size() != 0)
 				{
-					v1 = st_var.getFlags()[match_reverse];
-					valmask = v1;
-					station.getMetvar(*variable).setFlags(valmask);
+
+					varrayfloat dummy = st_var.getFlags().m_data[match_reverse];
+					news.m_data[match] = dummy;
 				}
-			}
-			
+				st_var.setFlags(news);
+				
+			}	
 		}
 		//do the QC flags, using try / except
-		if (do_qc_flags == true)
+		if (do_qc_flags == true && station.getQc_flags().size()!=0)
 		{
-			/*try
+			std::valarray<varrayfloat> qc_var = station.getQc_flags();
+			std::valarray<varrayfloat> news(fulltimes.size());
+			varrayfloat col(float(0),69);
+			for (size_t i = 0; i< news.size(); ++i)
 			{
-
-
-			}*/
+				news[i] = col;
+			}
+			std::valarray<varrayfloat> dummy = qc_var[match];
+			news[match] = dummy;
+			station.setQc_flags(news);
 		}
+
 		//working in fulltimes throughout and filter by missing
-		if (offset.days() != 0)	fulltimes = PYTHON_FUNCTION::arange<float>( DaysBetween.days() * 24, offset.days() * 24);
-		station.getMetvar("time").setData(fulltimes);
+		if (offset.days() != 0)	fulltimes = PYTHON_FUNCTION::arange<int>(DaysBetween.days() * 24, offset.days() * 24);
+		station.setTime_data(fulltimes);
 		return match;
 	}
 
-		/*
-		Return reporting accuracy & reporting frequency for variable
+		
 
-		: param obj st_var :	CStation variable object
-		: param datetime start : start of data series
-		: param datatime end : e	nd of data series
-
-		: returns :
-		reporting_stats - Nx2 array, one pair for each month
-		'''
-		*/
-
-	void monthly_reporting_statistics(CMetVar st_var, boost::gregorian::date start, boost::gregorian::date end)
+	valarray<std::pair<float, float>> monthly_reporting_statistics(CMetVar& st_var, boost::gregorian::date start, boost::gregorian::date end)
 	{
 		map<int, int> monthly_ranges;
 		monthly_ranges= month_starts_in_pairs(start, end);
+		valarray<std::pair<float, float>> reporting_stats(monthly_ranges.size());
+
+		for (size_t i = 0; i < reporting_stats.size(); ++i)
+		{
+			reporting_stats[i] = make_pair(float(-1), float(-1));
+		}
+		int m = 0;
+		for (pair<int,int> month:monthly_ranges)
+		{
+			size_t taille = month.second - month.first + 1;
+			varraysize indices(taille);
+			for (size_t i = 0; i < taille; i++)
+			{
+				indices[i] = month.first + i;
+			}
+			CMaskedArray<float> dummy = st_var.getAllData()[indices];
+			reporting_stats[m] = make_pair(reporting_frequency(dummy), reporting_accuracy(dummy));
+		}
+		return reporting_stats;
 	}
 	 void print_flagged_obs_number(std::ofstream& logfile, string test, string variable, int nflags, bool noWrite)
 	{
@@ -231,11 +248,12 @@ namespace UTILS
 
 	CMaskedArray<float> apply_filter_flags(CMetVar& st_var)
 	{
-		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags(),float(1),st_var.getData());
+		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags().m_data,float(1),st_var.getData());
 	}
 
-	float reporting_accuracy(varrayfloat& good_values, bool winddir)
+	inline float reporting_accuracy(CMaskedArray<float>& indata, bool winddir)
 	{
+		varrayfloat good_values = indata.compressed();
 		float resolution = -1;
 		if (winddir)
 		{
@@ -262,7 +280,7 @@ namespace UTILS
 			if (good_values.size() > 0)
 			{
 				varrayfloat remainders = std::abs(good_values) - std::abs(good_values.apply(UTILS::MyApplyRoundFunc));
-				varrayfloat binEdges = PYTHON_FUNCTION::arange<float>(1.05, -0.05, 0.0);
+				varrayfloat binEdges = PYTHON_FUNCTION::arange<float>(1.05, -0.05, 0.1);
 				varrayfloat hist = PYTHON_FUNCTION::histogram(good_values, binEdges);
 
 				hist = hist / hist.sum();
@@ -279,22 +297,22 @@ namespace UTILS
 		return resolution;
 	}
 
-	int reporting_frequency(CMaskedArray<float>& indata)
+	float reporting_frequency(CMaskedArray<float>& indata)
 	{
 		varraysize masked_locs = npwhere(indata.m_mask, false, "=");
-		int frequency = -1;
+		float frequency = float(-1);
 
 		if (masked_locs.size()>0)
 		{
 			varraysize  difference_series = npDiff(masked_locs);
 			varrayfloat binEdges = PYTHON_FUNCTION::arange<float>(25, 1);
 			varrayfloat hist = PYTHON_FUNCTION::histogram(difference_series, binEdges,true);
-			if (hist[0] >= 0.5) frequency = 1;
-			else if (hist[1] >= 0.5) frequency = 2;
-			else if (hist[2] >= 0.5) frequency = 3;
-			else if (hist[3] >= 0.5) frequency = 4;
-			else if (hist[5] >= 0.5) frequency = 6;
-			else frequency = 24;
+			if (hist[0] >= 0.5) frequency = float(1);
+			else if (hist[1] >= 0.5) frequency = float(2);
+			else if (hist[2] >= 0.5) frequency = float(3);
+			else if (hist[3] >= 0.5) frequency = float(4);
+			else if (hist[5] >= 0.5) frequency = float(6);
+			else frequency = float(24);
 		}
 		return frequency;
 	}
@@ -406,4 +424,69 @@ namespace UTILS
 		return sorted_data[n_data - quartile] - sorted_data[quartile];
 	}
 
+	void reshapeMonth(std::vector<std::valarray<std::pair<int, int>>>& month_ranges_years,std::map<int, int>&  month_ranges)
+	{
+		int taille = int(month_ranges.size() / 12);
+		std::valarray<pair<int, int>> month(taille);
+		int index = 0;
+		int compteur = 0;
+		int iteration = 1;
+		map<int, int>::iterator month_it = month_ranges.begin();
+		for (int i = 0; i < month_ranges.size(); i += 12)
+		{
+			if (iteration <= taille && i < month_ranges.size() && compteur < 12)
+			{
+				month[index++] = make_pair(month_it->first, month_it->second);
+				iteration++;
+				if (i + 12 < month_ranges.size()) std::advance(month_it, 12);
+			}
+			else
+			{
+				if (compteur == 12) break;
+				month_ranges_years.push_back(month);
+				compteur++;
+				month.resize(taille);
+				index = 0;
+				i = month_ranges_years.size();
+				month_it = month_ranges.begin();
+				std::advance(month_it, i);
+				month[index++] = make_pair(month_it->first, month_it->second);
+				std::advance(month_it, 12);
+				iteration = 2;
+			}
+			if (i + 12 >= month_ranges.size() && compteur < 12)
+			{
+				i = month_ranges_years.size();
+				month_it = month_ranges.begin();
+				std::advance(month_it, i + 1);
+			}
+		}
+	}
+
+	void reshapeYear(std::vector<std::vector<std::pair<int, int>>>& month_ranges_years, std::map<int, int>&  month_ranges)
+	{
+		int iteration = 1;
+		std::vector<std::pair<int, int>> month;
+		
+		for (map<int, int>::iterator month_it = month_ranges.begin(); month_it != month_ranges.end(); month_it++)
+		{
+			if (iteration <= 12)
+			{
+				month.push_back(make_pair(month_it->first, month_it->second));
+				iteration++;
+			}
+			else
+			{
+				month_ranges_years.push_back(month);
+				
+				month.clear();
+				month.push_back(make_pair(month_it->first, month_it->second));
+				iteration = 2;
+			}
+
+		}
+		month_ranges_years.push_back(month);
+	}
+
+	
 }

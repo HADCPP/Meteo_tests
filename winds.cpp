@@ -54,18 +54,161 @@ namespace INTERNAL_CHECKS
 		speed.setFlags(flag_locs0, float(1));
 		direction.setFlags(flag_locs1, float(1));
 	}
-	void wind_rose_check(CStation &station, int flag_col, boost::gregorian::date start, boost::gregorian::date  end,
-		std::ofstream& logfile)
+	void wind_create_bins(CMaskedArray<float>&  indata, varrayfloat& binEdges, varrayfloat& bincenters)
 	{
+		//set up the bins
+		float bmins = ma_min(indata);
+		float bmax = ma_max(indata);
+		float binwidth = (bmax - bmins)/20;
+		//get power of ten
+		int decimal_places = to_string(int(1 / binwidth)).size();
+		binwidth = Round(binwidth, decimal_places);
+		binEdges = arange(bmax+3*binwidth, float(0), binwidth);
+		bincenters = binEdges[std::slice(1, binEdges.size() - 1, 1)];
+		bincenters += binEdges[std::slice(0, binEdges.size() - 1, 1)];
+		bincenters *= float(0.5);
 
 	}
 
+	float get_histogram_norm(varrayfloat&  indata, varrayfloat& binEdges)
+	{
+		varrayfloat natural_hist = histogram(indata, binEdges);
+		varrayfloat normed_hist = histogram(indata, binEdges,true);
 
+		size_t maxloc = np_argmax(natural_hist);
+		return float(natural_hist[maxloc] / normed_hist[maxloc]);
+	}
+
+	void wind_rose_check(CStation &station, int flag_col, boost::gregorian::date start, boost::gregorian::date  end,std::ofstream& logfile)
+	{
+		CMaskedArray<float> speed = station.getMetvar("windspeeds").getAllData();
+		CMaskedArray<float> direction = station.getMetvar("winddirs").getAllData();
+		varrayfloat flags = station.getQc_flags()[flag_col];
+		map<int, int> month_ranges = month_starts_in_pairs(start, end);
+		std::vector<std::vector<pair<int, int>>> month_ranges_years;
+		reshapeYear(month_ranges_years, month_ranges);
+		//histogram of wind directions ( ~ unravelled wind-rose)
+		int bw = 20;
+		varrayfloat binEdges = arange(float(360 + bw), float(0), float(bw));
+		varrayfloat full_hist = histogram(direction.m_data, binEdges, true);
+		//use rmse as this is known(Chi - sq remains just in case)
+		CMaskedArray<float> rmse = CMaskedArray<float>(float(- 1), month_ranges_years.size());
+		CMaskedArray<float> chisq = CMaskedArray<float>(float(-1), month_ranges_years.size());
+		//run through each year to extract RMSE's
+		varrayfloat hist(binEdges.size());
+		int y = 0;
+		for (std::vector<pair<int,int>> year : month_ranges_years)
+		{
+			varraysize indices(year.size());
+			for (size_t i = 0; i < indices.size(); ++i)
+			{
+				indices[i] = year[i].first;
+			}
+			CMaskedArray<float> _direction = direction[indices];
+
+			if (_direction.compressed().size() > 0)
+			{
+				hist = histogram(_direction.m_data, binEdges, true);
+				chisq.m_data[y] = ((full_hist - hist)*(full_hist - hist) / (full_hist + hist)).sum() / 2.;
+				rmse.m_data[y] = std::sqrt(((full_hist - hist)*(full_hist - hist)).sum() / hist.size());
+			}
+			else rmse.m_mask[y] = true;
+			y++;
+		}
+		//Now to bin up the differences and see what the fit is.
+		//need to have values spread so can bin!
+		valarray<float> rmse_unique = rmse.compressed()[rmse.compressed() != float(-1)];  // array contenant les éléments != de -1
+		if (rmse_unique.size() > 0)
+		{
+			varrayfloat bincenters(binEdges.size());
+			wind_create_bins(rmse, binEdges, bincenters);
+			hist = histogram(rmse.m_data, binEdges);
+
+			float norm = get_histogram_norm(rmse.m_data, binEdges);
+
+			//inputs for fit
+			double mu = rmse.m_data.sum() / rmse.size();
+			double std = stdev(rmse.m_data, mu);
+
+			//try to get decent fit to bulk of obs.
+
+			varrayfloat gaussian = fit_gaussian(bincenters, hist, hist.max(), mu, std);
+			float threshold;
+			/*
+			 if dist_pdf[-1] < PROB_THRESHOLD:
+            # then curve has dropped below the threshold, so can find some updated ones.
+            threshold = -np.where(dist_pdf[::-1] > PROB_THRESHOLD)[0][0]
+        else:
+            threshold = bincenters[-1]*/
+
+			int n = 0;
+			int center = np_argmax(hist);
+			float gap = bincenters[bincenters.size() - 1];  //nothing should be beyond this
+			while (true)
+			{
+				if (center + n + 1 == bincenters.size())  //gone beyond edge - nothing to flag, so just break
+					break;
+				if (bincenters[center + n] < threshold)
+				{
+					n += 1;
+					continue; // continue moving outwards
+				}
+				if (hist[center + n] == float(0))
+				{
+					//found one
+					if (center + n + 1 == bincenters.size()) //gone beyond edge - nothing to flag, so just break
+						break;
+					else if (hist[center + n + 1] == float(0))
+					{
+						// has to be two bins wide ?
+						gap = bincenters[center + n];
+						break;
+					}
+				}
+				n += 1;
+			}
+			//run through each year to extract RMSE's
+			int y = 0;
+			for (std::vector<pair<int, int>> year : month_ranges_years)
+			{
+				if (rmse[y] > gap)
+				{
+					//only flag where there are observations
+					varraysize indices(year.size());
+					for (size_t i = 0; i < indices.size(); ++i)
+					{
+						indices[i] = year[i].first;
+					}
+					valarray<bool> dummy1 = direction.m_mask[indices];
+					valarray<bool> dummy2 = speed.m_mask[indices];
+					varraysize good = npwhereOr(dummy1, "=", false, dummy2, "=", false);
+					// flags[int(year[0][0]):int(year[-1][0])][good] = 1
+
+				}
+				else rmse.m_mask[y] = false;
+				y++;
+			}
+		}
+		//and apply the flags and output text
+		
+		varraysize flag_locs = npwhere(flags, float(0), "!");
+		print_flagged_obs_number(logfile, "Wind Rose Check"," windspeeds / dirs", flag_locs.size());
+
+		station.setQc_flags(flags,flag_col);
+		//and flag the variables
+		
+		station.getMetvar("windspeeds").setFlags(flag_locs,float(1));
+		station.getMetvar("winddirs").setFlags(flag_locs, float(1));
+		}
+		
 	void wdc(CStation &station, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end,
 		std::ofstream& logfile)
 	{
 		//what to do about synergistic flagging - can there be more speed obs than dir obs or vv?
+
+		cout << "running wind checks" << endl;
 		logical_checks(station, { flag_col[0], flag_col[1] }, logfile);
 
+		wind_rose_check(station, flag_col[2], start, end, logfile);
 	}
 }

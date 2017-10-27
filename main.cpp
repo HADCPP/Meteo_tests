@@ -26,7 +26,7 @@ using namespace INTERNAL_CHECKS;
 
 
 
- string DATE[2]={ "19310101", "20170101"};
+ string DATE[2]={ "20090101", "20100101"};
 
 //string LOG_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\Data\\";
 //string CSV_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\PEI 2015-2016H\\";
@@ -128,7 +128,7 @@ int main(int arg, char * argv)
 	//fichier d'entrée
 	
 	//char* file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\duplicate_months\\duplicate_months\\candidate_stations.txt";
-	string file = "C:\\Users\\oali\\Documents\\Visual Studio 2013\\Projects\\HADCPP\\duplicate_months\\Data\\PEI 2015-2016.HourlyHdr.csv";
+	string file = "D:\\HadISD++\\Data\\PEI2015-2016.HourlyHdr.csv";
 			
 	vector<CStation> station_info;
 	//Obtenir la liste des stations

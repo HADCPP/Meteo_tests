@@ -1,33 +1,12 @@
-//*****************************
-//
-// Distributional Gap Check (DGC)
-//
-//   At times this is a direct translation from IDL
-//     Could be made more pythonic, but need to match outputs!
-//
-//
-//************************************************************************
-//                    SVN Info
-//$Rev:: 67                                            $:  Revision of last commit
-//$Author:: rdunn                                      $:  Author of last commit
-//$Date:: 2015-05-01 16:18:52 +0100 (Fri, 01 May 2015) $:  Date of last commit
-//************************************************************************
-
-//import numpy as np
-//import scipy as sp
-//import datetime as dt
-//from scipy.optimize import leastsq
-//import scipy.stats as stats
-//
-//# RJHD routines
-//import qc_utils as utils
-
-#include <vector>
-#include <valarray>
-#include <boost/date_time/gregorian/gregorian.hpp>
+#include "distributional_gap.h"
 
 using namespace std;
+using namespace UTILS;
 using namespace boost;
+using namespace PYTHON_FUNCTION;
+using namespace boost::numeric::ublas;
+
+
 
 //# mean vs median
 //# SD vs IQR
@@ -175,69 +154,69 @@ double dgc_find_gap(hist, bins, double threshold, double gap_size = GAP_SIZE)
 varrayfloat dgc_monthly(CStation& station, string variable, varrayfloat flags, gregorian::date start, gregorian::date end)
 {
 
-	// '''
-	// Original Distributional Gap Check
 
-	// :param obj CStation: CStation object
-	// :param str variable: variable to act on
-	// :param array flags: flags array
-	// :param datetime start: data start
-	// :param datetime end: data end
-	// :param bool plots: run plots
-	// :param bool diagnostics: run diagnostics
-	// :param bool idl: run IDL equivalent routines for median
-	// :returns: 
-	// flags - updated flag array
-	// '''
+	CMetVar st_var = station.getMetvar(variable);
 
-	//if plots:
-	//  import matplotlib.pyplot as plt
+	map<int, int> month_ranges = month_starts_in_pairs(start, end);
 
-	st_var = getattr(station, variable);
+	// get monthly averages
+	CMaskedArray<float> month_average = CMaskedArray<float>::CMaskedArray(Cast<float>(st_var.getMdi()),month_ranges.size());
 
-	month_ranges = utils.month_starts_in_pairs(start, end);
+	CMaskedArray<float> month_average_filtered = CMaskedArray<float>::CMaskedArray(Cast<float>(st_var.getMdi()), month_ranges.size());
 
-	//# get monthly averages
-	month_average = np.empty(month_ranges.shape[0]);
-	month_average.fill(st_var.mdi);
-	month_average_filtered = np.empty(month_ranges.shape[0]);
-	month_average_filtered.fill(st_var.mdi);
-
-	all_filtered = utils.apply_filter_flags(st_var);
-	for (m, month in enumerate(month_ranges))
+	CMaskedArray<float>  all_filtered = apply_filter_flags(st_var);
+	int m = 0;
+	for(map<int,int>::iterator month = month_ranges.begin(); month != month_ranges.end(); month++)
 	{
-		data = st_var.data[month[0]:month[1]];
+		size_t taille = month->second - month->first + 1;
 
-		filtered = all_filtered[month[0]:month[1]];
-
-		month_average[m] = dgc_get_monthly_averages(data, OBS_LIMIT, st_var.mdi, MEAN);
-		month_average_filtered[m] = dgc_get_monthly_averages(filtered, OBS_LIMIT, st_var.mdi, MEAN);
-	}
-	//# get overall monthly climatologies - use filtered data
-
-	month_average = month_average.reshape(-1, 12);
-	month_average_filtered = month_average_filtered.reshape(-1, 12);
-
-	standardised_months = np.empty(month_average.shape);
-	standardised_months.fill(st_var.mdi);
-
-		for (m in range(12))
+		varraysize indices(taille);
+		for(size_t i = 0; i < taille; i++)
 		{
+			indices[i] = month->first + i;
+		}
 
-			valid_filtered = np.where(month_average_filtered[:, m] != st_var.mdi)
+		varrayfloat data = st_var.getData()[indices];
 
-				if (len(valid_filtered[0]) >= VALID_MONTHS)
-				{
-					valid_data = month_average_filtered[valid_filtered, m][0]
+		varrayfloat filtered = all_filtered.m_data[indices];
 
-						if (MEAN)
-						{
-							clim = np.mean(valid_data)
-								spread = np.stdev(valid_data)
-						}
-						else
-						{
-							clim = np.median(valid_data);
+		//month_average[m] = dgc_get_monthly_averages(data, OBS_LIMIT, st_var.mdi, MEAN);
+		//month_average_filtered[m] = dgc_get_monthly_averages(filtered, OBS_LIMIT, st_var.mdi, MEAN);
+		m+=1 ;
+	}
+	// get overall monthly climatologies - use filtered data
+
+	std::vector<std::valarray<float>> list_month_average = C_reshape(month_average.m_data,12);
+	std::vector<std::valarray<float>>  list_month_average_filtered = L_reshape(month_average_filtered.m_data ,12);
+
+	/***Initialisation de standardised_months*/
+
+	std::vector<varrayfloat> standardised_months;
+	for(size_t i = 0; i < 12; i++)
+	{
+		varrayfloat dummy(Cast<float>(st_var.getMdi()), list_month_average.size());
+		standardised_months.push_back(dummy);
+	}
+	for (size_t m = 0; m < 12;++m)
+	{
+		varraysize valid_filtered = npwhere(list_month_average_filtered[m], Cast<float>(st_var.getMdi()), "!");
+
+		if (valid_filtered.size() >= VALID_MONTHS)
+		{
+			float valid_data = list_month_average_filtered[m][valid_filtered][0];
+			float clim;
+			float spread
+			if (MEAN)
+			{
+				clim = valid_data;
+				 spread = float(0);
+			}
+			else
+			{
+				clim = valid_data;
+
+				if (spread <= float(SPREAD_LIMIT))
+					spread = float(SPREAD_LIMIT);
 
 							spread = utils.IQR(valid_data);
 							if (spread <= SPREAD_LIMIT)
@@ -553,18 +532,15 @@ varrayfloat dgc_all_obs(CStation& station, string variable, varrayfloat flags, g
 }
 
 //#************************************************************************
-void dgc(CStation& station, vector<string> variable_list, flag_col, start, end, string logfile, bool GH = false)
+void dgc(CStation& station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date start,
+	boost::gregorian::date  end, std::ofstream& logfile, bool GH )
 {
-	//'''Controller for two individual tests'''
-
-	//if plots:
-	//  import matplotlib.pyplot as plt
-
-
-
-	for (v, variable in enumerate(variable_list))
+	
+	int v = 0;
+	for (string variable:variable_list)
 	{
-		station.qc_flags[:, flag_col[v]] = dgc_monthly(CStation, variable, CStation.qc_flags[:, flag_col[v]], start, end, plots = plots, diagnostics = diagnostics, idl = idl);
+		station.qc_flags[:, flag_col[v]] = dgc_mvoid dgc(CStation& station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date start,
+			boost::gregorian::date  end, std::ofstream& logfile, bool GH = false); onthly(CStation, variable, CStation.qc_flags[:, flag_col[v]], start, end, plots = plots, diagnostics = diagnostics, idl = idl);
 
 		if (variable == "slp")
 			//# need to send in windspeeds too        

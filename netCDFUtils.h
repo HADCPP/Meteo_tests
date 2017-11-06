@@ -1,22 +1,32 @@
 #pragma once
-#include <string>
+
+#include "python_function.h"
+#include "Utilities.h"
+#include "station.h"
+#include "utils.h"
+
 #include "netcdf.h"
 #include "ncFile.h"
 #include "ncDim.h"
 #include "ncVar.h"
-#include "Utilities.h"
+#include "ncException.h"
+#include "ncVarAtt.h"
+
 #include <vector>
-#include "station.h"
+#include <map>
+#include <string>
 #include <typeinfo.h>
-#define INTMDI  +9999
-#define FLTMDI  -999
+
+
+
 
 namespace
 {
 	std::string LOG_OUTFILE_LOCS = "D:\\HadISD++\\Data\\Log";
 	std::string NETCDF_DATA_LOCS = "D:\\HadISD++\\Data\\NetCDF_files\\";
 	std::string CSV_OUTFILE_LOCS = "D:\\HadISD++\\Data\\PEI 2015-2016H\\";
-	
+	const int INTMDI = -999;
+	const float FLTMDI = -1e30;
 	const int NBVAR=69; // recuperer la taille des données dans le fichier netCDF
 	
 }
@@ -138,7 +148,7 @@ namespace NETCDFUTILS
 
 	}
 	void MakeNetcdfFiles(const std::string fichier, std::string *date, CStation &stat);
-	void read(std::string filename, CStation & stat, std::vector<std::string> process_var, std::vector<std::string>  opt_var_list ,
+	void read(std::string filename, CStation& stat, std::vector<std::string>& process_var, std::vector<std::string>&  opt_var_list ,
 		bool read_input_station_id = true, bool read_qc_flags = true, bool read_flagged_obs = true);
 	void write(const std::string filename1, CStation & stat, std::vector<std::string> var_list,
 		std::vector<std::string>  opt_var_list, std::valarray<bool> compressed, bool write_QC_flags = true,

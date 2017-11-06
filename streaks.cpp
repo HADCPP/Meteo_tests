@@ -1,5 +1,5 @@
 #include "streaks.h"
-#include  "utils.h"
+
 
 
 using namespace std;
@@ -22,7 +22,7 @@ namespace INTERNAL_CHECKS
 		int o = 0;
 		for (float obs : all_filtered.m_data)
 		{
-			if (all_filtered.m_mask[0] == false)
+			if (all_filtered.m_mask[o] == false)
 			{
 				if (obs != prev_value)
 				{
@@ -45,20 +45,30 @@ namespace INTERNAL_CHECKS
 		 
 	}
 	
-	void rsc_annual_string_expectance(CMaskedArray<float>& all_filtered, std::vector<int>& value_starts, std::vector<int>& value_lengths, varrayfloat& flags, boost::gregorian::date  start, boost::gregorian::date end, CMetVar& st_var, const  std::vector<int> times)
+	void rsc_annual_string_expectance(CMaskedArray<float>& all_filtered, std::vector<int>& value_starts, std::vector<int>& value_lengths, varrayfloat& flags, boost::gregorian::date  start, boost::gregorian::date end, CMetVar& st_var, const  varrayfloat& times)
 	{
 		vector<int> month_starts;
 		UTILS::month_starts(start, end,month_starts);  //  FONCTION RESHAPE
 		vector<valarray<int>> m_month_starts = L_reshape(month_starts, 12);
-		valarray < float > year_proportions(Cast<float>(st_var.getMdi()), m_month_starts.size());
-		CMaskedArray<float> year = CMaskedArray<float>::CMaskedArray(Cast<float>(st_var.getMdi()), all_filtered.size());
+		valarray<float> year_proportions(Cast<float>(st_var.getMdi()), m_month_starts.size());
+		CMaskedArray<float> year(Cast<float>(st_var.getMdi()), all_filtered.size());
 		// churn through each year in turn
 		for (int y = 0; y < m_month_starts.size(); y++)
 		{
 			if (y != m_month_starts.size() - 1)
-				year.m_data = all_filtered.m_data[std::slice(m_month_starts[y][0], m_month_starts[y + 1][0], 1)];
+			{
+				/*varraysize indices(m_month_starts[y + 1][0] - m_month_starts[y][0]);
+				for (size_t i = 0; i < indices.size(); i++)
+				{
+					indices[i] = m_month_starts[y][0] + i;
+				}*/
+				year = all_filtered(m_month_starts[y][0], m_month_starts[y+1][0]);
+			}
 			else
-				year.m_data = all_filtered.m_data[std::slice(m_month_starts[y][0], m_month_starts.size() - m_month_starts[y][0], 1)];
+			{
+				year = all_filtered(m_month_starts[y][0], all_filtered.size());
+			}
+
 			if (year.compressed().size() >= 200)
 			{
 				varraysize string_starts(value_starts.size());
@@ -66,21 +76,18 @@ namespace INTERNAL_CHECKS
 				if (y != m_month_starts.size() - 1)
 					string_starts = npwhereAnd(value_starts, m_month_starts[y][0], m_month_starts[y + 1][0], ">=", "<");
 				else
-					string_starts = npwhere(value_starts, m_month_starts[y][0], ">=");
+					string_starts = npwhere(value_starts, ">=", m_month_starts[y][0]);
 
 				year_proportions[y] = 0;
 				if (string_starts.size() >= 1)
 				{
-					varrayfloat dummy(value_lengths.size());
-					std::copy(value_lengths.begin(), value_lengths.end(), std::begin(dummy));
-					dummy = dummy[string_starts];
-					year_proportions[y] = dummy.sum() / float(year.compressed().size());
+					//work out the proportion of the amount of data
+					year_proportions[y] = Somme(value_lengths)/ float(year.compressed().size());
 				}
-
 			}
 		}
 		//if enough dirty years
-		varraysize good_years = npwhere(year_proportions, Cast<float>(st_var.getMdi()), "!");
+		varraysize good_years = npwhere(year_proportions, "!", Cast<float>(st_var.getMdi()));
 		
 		if (good_years.size() >= 10)
 		{
@@ -89,7 +96,7 @@ namespace INTERNAL_CHECKS
 			dummy.free();
 			if (median < 0.005) median = 0.005;
 			//find the number which have proportions > 5 x median
-			varraysize bad_years = npwhere(year_proportions, 5 * median, ">");
+			varraysize bad_years = npwhere(year_proportions, ">", 5 * median);
 			if (bad_years.size()>1)
 			{
 				varraysize locs(value_starts.size());
@@ -99,7 +106,7 @@ namespace INTERNAL_CHECKS
 					if (bad == m_month_starts.size() - 1)
 					{
 						//if last year, just select all
-						locs = npwhere(value_starts, m_month_starts[bad][0], ">=");
+						locs = npwhere(value_starts, ">=", m_month_starts[bad][0]);
 					}
 					else
 						locs = npwhereAnd(value_starts, m_month_starts[bad][0], m_month_starts[bad + 1][0], ">=", "<=");
@@ -107,10 +114,10 @@ namespace INTERNAL_CHECKS
 					{
 						//need to account for missing values here
 						valarray<bool> dummy = all_filtered.m_mask[std::slice(value_starts[loc], all_filtered.m_mask.size() - value_starts[loc], 1)];
-						varraysize goods = npwhere(dummy, false, "=");
-						varraysize dum = goods[std::slice(0, value_lengths[loc], 1)];
-						dum += value_starts[loc];
-						flags[dum] = 1;
+						varraysize goods = npwhere(dummy, "=", false);
+						goods= goods[std::slice(0, value_lengths[loc], 1)];
+						goods += value_starts[loc];
+						flags[goods] = 1;
 					}
 				}
 			}
@@ -118,7 +125,7 @@ namespace INTERNAL_CHECKS
 
 	}
 
-	varrayfloat rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind, float reporting, bool dynamic)
+	varrayfloat rsc_straight_strings(CMetVar& st_var,const varrayfloat& times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind, float reporting, bool dynamic)
 	{
 		float threshold;
 		
@@ -127,7 +134,7 @@ namespace INTERNAL_CHECKS
 		{
 			//remove calm periods for this check
 			CMetVar wd_st_var = st_var;
-			varraysize calms = npwhere(st_var.getData(), float(0), "=");  //True calms have direction set to 0, northerlies to 360
+			varraysize calms = npwhere(st_var.getData(), "=", float(0));  //True calms have direction set to 0, northerlies to 360
 			wd_st_var.setData(calms,Cast<float>( wd_st_var.getMdi()));
 
 			if (dynamic)
@@ -149,10 +156,11 @@ namespace INTERNAL_CHECKS
 		//Look for continuous straight strings
 
 		float prev_value = Cast<float>(st_var.getMdi());
-		vector<int> values_starts;
-		vector<int> values_lengths;
 		vector<int> string_points;
 		//storage for excess over years
+		vector<int> values_starts;
+		vector<int> values_lengths;
+		
 
 		int o = 0;
 		for (float obs : all_filtered.m_data)
@@ -161,11 +169,8 @@ namespace INTERNAL_CHECKS
 			{
 				if (obs != prev_value)
 				{
-					if (st_var.getName() == "winddirs" && prev_value == 0);
-
-					else
-					{
-						//if different value to before, which is long enough (and large enough for Wind)
+					if (st_var.getName() != "winddirs" || prev_value != 0)
+					{//if different value to before, which is long enough (and large enough for Wind)
 						if (string_points.size() >= 10)
 						{
 							if (wind == false || (wind == true && prev_value > WIND_MIN_VALUE[reporting]))
@@ -256,20 +261,24 @@ namespace INTERNAL_CHECKS
 
 	}
 
-	varrayfloat rsc_hourly_repeats(CMetVar& st_var, std::vector<int>& times, int n_hrs, int n_wday, varrayfloat& flags)
+	void rsc_hourly_repeats(CMetVar& st_var, const varrayfloat& times, int n_hrs, int n_wday, varrayfloat& flags, varrayfloat&  day_flags)
 	{
 		
 		CMaskedArray<float> hourly_data = apply_filter_flags(st_var);
-		vector<CMaskedArray<float>> h_hourly_data = L_reshape(hourly_data, 24);
-		vector<valarray<int>> hourly_times = L_reshape(times, 24);
-
+		vector<CMaskedArray<float>> h_hourly_data = C_reshape(hourly_data, 24);
+		vector<valarray<float>> hourly_times = C_reshape(times, 24);
+		int count = 1;
+	
 		for (size_t hour = 0; hour < 24; hour++)
 		{
 			float match_values = -999.;
-			vector<int> match_times, len_matches;
-
-			for (int day = 0; day < h_hourly_data.size(); ++day)
+			vector<int> len_matches;
+			vector<float> match_times;
+			
+			for (int day = 0; day < h_hourly_data.size(); day++)
 			{
+				
+				cout << "Iteration " << count++<< " / " << 24 * h_hourly_data.size() << endl;
 				//for each day at each given hour
 				if (h_hourly_data[day].m_mask[hour] == false)
 				{
@@ -278,25 +287,24 @@ namespace INTERNAL_CHECKS
 						//if different value, check if string/streak above threshold
 						if (match_times.size() > n_hrs)
 						{
-							varraysize bad = npwhere(match_times, times, "=");
+							varraysize bad = npwhere(match_times, "=", times);
 							flags[bad] = 1;
 						}
+						len_matches.push_back(match_times.size());
+						match_values = h_hourly_data[day][hour];
+						match_times.clear();
+						match_times.push_back(hourly_times[day][hour]);
 					}
-					len_matches.push_back(match_times.size());
-					match_values = h_hourly_data[day][hour];
-					match_times.clear();
-					match_times.push_back(hourly_times[day][hour]);
-				}
-				else
-				{
-					//if same value
-					match_times.push_back(hourly_times[day][hour]);
-				}
+					else
+					{
+						//if same value
+						match_times.push_back(hourly_times[day][hour]);
+					}
+				}	
 			}
+				
 		}
-		varrayfloat day_flags(h_hourly_data.size());
 		rsc_whole_day_repeats(h_hourly_data, n_wday, day_flags);
-		return day_flags;
 			
 	}
 	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<vector<int>>  flag_col, boost::gregorian::date  start,
@@ -354,7 +362,8 @@ namespace INTERNAL_CHECKS
 		WIND_MIN_VALUE[0.5] = 1.0;
 		WIND_MIN_VALUE[0.1] = 0.5;
 
-		vector<int> times = station.getTime_data();
+		cout << "Streaks" << endl;
+		varrayfloat times = station.getMetvar("time").getData();
 		int v = 0;
 		for (string variable : var_list)
 		{
@@ -364,22 +373,26 @@ namespace INTERNAL_CHECKS
 				bool wind = false;
 				if (variable == "windspeeds") wind = true;
 				bool winddir = false;
-				if (variable == "winddirs") wind = true;
+				if (variable == "winddirs") winddir = true;
 
-				float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var).m_data, winddir);
+				float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var), winddir);
 				array<int,4> limits = limits_dict[variable][reporting_resolution];
 
 				// need to apply flags to st_var.flags each time for filtering
 								
 				station.setQc_flags(rsc_straight_strings(st_var, times, limits[0], limits[1], start, end,WIND_MIN_VALUE, wind, reporting_resolution, true), flag_col[v][0]);
-				varrayfloat flags(st_var.getData().size()), day_flags(st_var.getData().size());
-				day_flags = rsc_hourly_repeats(st_var, times, limits[2], limits[3], flags);
+
+				varrayfloat flags(st_var.getData().size());
+				varrayfloat day_flags(st_var.getData().size());
+
+				rsc_hourly_repeats(st_var, times, limits[2], limits[3], flags,day_flags);
+
 				station.setQc_flags(flags, flag_col[v][1]);
 				station.setQc_flags(day_flags, flag_col[v][2]);
 
 				for (int streak_type = 0; streak_type < 3; ++streak_type)
 				{
-					varraysize flag_locs = npwhere(station.getQc_flags(flag_col[v][streak_type]), float(0),"!");
+					varraysize flag_locs = npwhere(station.getQc_flags(flag_col[v][streak_type]), "!", float(0));
 
 					print_flagged_obs_number(logfile, "Streak Check", variable, flag_locs.size());
 

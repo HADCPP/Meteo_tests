@@ -17,6 +17,7 @@ Repeated Streaks Check (RSC)
 #include "python_function.h"
 #include "Utilities.h"
 
+
 #include <boost/date_time/gregorian/gregorian.hpp>
 #include <string>
 #include <vector>
@@ -50,7 +51,7 @@ namespace INTERNAL_CHECKS
     :param bool wind: whether there is wind data to account for - extra minimum value
     :param bool dynamic: calculate threshold of number of observations dynamically rather than using n_obs
 	*/
-	varrayfloat rsc_straight_strings(CMetVar& st_var, std::vector<int> times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind = false, float reporting = 0., bool dynamic = true);
+	varrayfloat rsc_straight_strings(CMetVar& st_var, const varrayfloat& times, int n_obs, int n_days, boost::gregorian::date  start, boost::gregorian::date end, std::map<float, float> WIND_MIN_VALUE, bool wind = false, float reporting = 0., bool dynamic = true);
 	
 
 	/*
@@ -69,7 +70,7 @@ namespace INTERNAL_CHECKS
 	:param int n_wday: number of whole days to exceed (passed on)
 
 	*/
-	varrayfloat rsc_hourly_repeats(CMetVar& st_var, std::vector<int>& times, int n_hrs, int n_wdays, varrayfloat& flags);
+	void rsc_hourly_repeats(CMetVar& st_var, const varrayfloat& times, int n_hrs, int n_wdays, varrayfloat& flags, varrayfloat&  day_flags);
 
 	/*
 	Find years where have more strings than expected, but not long enough to set off test
@@ -85,7 +86,7 @@ namespace INTERNAL_CHECKS
 	return flags
 	*/
 
-	void rsc_annual_string_expectance(const CMaskedArray<float>& all_filtered, std::vector<int>& value_starts, std::vector<int>& value_lengths, varrayfloat& flags, boost::gregorian::date  start, boost::gregorian::date end, CMetVar& st_var, std::vector<int> times);
+	void rsc_annual_string_expectance(const CMaskedArray<float>& all_filtered, std::vector<int>& value_starts, std::vector<int>& value_lengths, varrayfloat& flags, boost::gregorian::date  start, boost::gregorian::date end, CMetVar& st_var, const  varrayfloat&times);
 	
 	void rsc(CStation& station, std::vector<std::string> var_list, std::vector<std::vector<int>>  flag_col, boost::gregorian::date  start,
 		boost::gregorian::date end, std::ofstream& logfile);

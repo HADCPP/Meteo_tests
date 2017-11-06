@@ -12,7 +12,7 @@
 template<typename T> class CMaskedArray
 {
 public:
-
+	/****** Constructeurs*****************************************************/
 	CMaskedArray()
 	{
 		m_fill_value = 0;
@@ -22,18 +22,32 @@ public:
 	CMaskedArray(std::valarray<T> data)
 	{
 		m_fill_value = static_cast<T>(1e20);
-		m_data = data;
-		m_mask.resize(data.size(),false);
-
+		m_data=data;
+		m_mask.resize(data.size(), false);
+	}
+	CMaskedArray(size_t n, T *data, T missing_value)
+	{
+		m_fill_value = missing_value;
+		valarray<T> dum(data, n);
+		m_data= dum;
+		m_mask.resize(n, false);
+		masked(missing_value);
 	}
 	CMaskedArray(T missing_value,std::valarray<T> data)
 	{
-		m_fill_value = T(1e20);
+		m_fill_value = missing_value;
 		m_data = data;
-		for (size_t i = 0; i < data.size();++i)
-			if (data[i]==missing_value) m_mask[i] = true;
+		m_mask.resize(data.size(), false);
+		masked(missing_value);
 	}
-	CMaskedArray(T data, size_t  size)
+	CMaskedArray(T missing_value, size_t n,bool missing)
+	{
+		m_fill_value = missing_value;
+		m_data.resize(n);
+		m_mask.resize(n);
+		masked(missing_value);
+	}
+	CMaskedArray(T data, size_t size)
 	{
 		m_fill_value = T(1e20);
 		m_data.resize(size);
@@ -48,7 +62,9 @@ public:
 		m_mask.resize(size);
 		m_mask= false;
 	}
-	CMaskedArray(CMaskedArray const& mask_array_copy)
+
+	/*********************  END constructeurs ***************/
+	CMaskedArray(CMaskedArray<T> const& mask_array_copy)
 	{
 		m_fill_value = mask_array_copy.m_fill_value;
 		m_data = mask_array_copy.m_data;
@@ -57,9 +73,70 @@ public:
 	}
 	
 	//T fill_value() const{ return m_fill_value; }
-	void fill(T value)
+	void fill(T value, bool mask = false)
 	{
-		m_data = value;
+		if (mask)
+		{
+			
+			for (size_t i = 0; i < m_data.size(); ++i)
+			{
+				if (m_data[i] == m_fill_value)
+				{
+					m_data[i] = value;
+				}
+			}
+		}
+		else m_data = value;
+
+		m_fill_value = value;
+	}
+	void fill(const varraysize& indices,const CMaskedArray<T>& M_array)
+	{
+		m_masked_indices.clear();
+		
+		for (size_t i = 0; i < indices.size(); ++i)
+		{
+			m_data[i] = M_array.m_data[j];
+			
+		}
+		masked(m_fill_value);
+	}
+	void fill(const varraysize& indices,const std::valarray<T>& M_array)
+	{
+		m_masked_indices.clear();
+		
+		for (size_t i = 0; i < indices.size(); ++i)
+		{
+			m_data[i] = M_array[i];
+
+		}
+		masked(m_fill_value);
+	}
+	void fill(const std::valarray<bool>& indices, const CMaskedArray<T>& M_array)
+	{
+		m_masked_indices.clear();
+		int j = 0;
+		for (size_t i = 0; i < indices.size(); ++i)
+		{
+			if (indices[i] == true)
+			{
+				m_data[i] = M_array.m_data[j++];
+			}
+		}
+		masked(m_fill_value);
+	}
+	void fill(const std::valarray<bool>& indices, const std::valarray<T>& M_array)
+	{
+		m_masked_indices.clear();
+		int j = 0;
+		for (size_t i = 0; i < indices.size();i++)
+		{
+			if (indices[i] == true)
+			{
+				m_data[i] = M_array[j++];
+			}	
+		}
+		masked(m_fill_value);
 	}
 	T ma_sum()
 	{
@@ -94,12 +171,44 @@ public:
 	void masked(size_t index)
 	{
 		m_mask[index] = true;
+		m_masked_indices.push_back(index);
+	}
+	void masked(T missing_value,bool ma=false)
+	{
+		
+		if (!ma)
+		{
+			for (size_t i = 0; i < m_data.size(); ++i)
+			{
+				if (m_data[i] == missing_value)
+				{
+					m_mask[i] = true;
+					m_masked_indices.push_back(i);
+				}
+				else m_mask[i] = false;
+			}
+		}
+		else
+		{
+			for (size_t i = 0; i < m_data.size(); ++i)
+			{
+				if (m_data[i] == missing_value)
+				{
+					m_data[i] = missing_value;
+					m_mask[i] = true;
+					m_masked_indices.push_back(i);
+				}
+				else m_mask[i] = false;
+			}
+		}
+		m_fill_value = missing_value;
 	}
 	size_t size() const{return m_data.size();}
-	void resize(size_t val)
+	
+	void resize(size_t val,T value= T(0))
 	{
-		m_data.resize(val);
-		m_mask.resize(val);
+		m_data.resize(val,value);
+		m_mask.resize(val,false);
 		m_masked_indices.clear();
 	}
 	//void fill_value(T fill){m_fill_value = fill;}
@@ -128,10 +237,20 @@ public:
 		ma.m_mask = m_mask[indices];
 		ma.m_data = m_data[indices]; 
 		ma.m_fill_value = m_fill_value;
+		//ma.masked(m_fill_value);
 		return ma; 
 	}
-
-	CMaskedArray& CMaskedArray::operator=(CMaskedArray const& mask_array_copy)
+	CMaskedArray<T> operator[](std::valarray<bool> indices)
+	{
+		CMaskedArray<T> ma;
+		ma.m_mask = m_mask[indices];
+		ma.m_data = m_data[indices];
+		ma.m_fill_value = m_fill_value;
+		//ma.masked(m_fill_value);
+		return ma;
+	}
+	
+	CMaskedArray<T>& CMaskedArray<T>::operator=(CMaskedArray<T> const& mask_array_copy)
 	{
 		if (this != &mask_array_copy)
 		{
@@ -150,7 +269,14 @@ public:
 		ma.m_data = m_data - m1.m_data;
 		return ma;
 	}	
-
+	
+	CMaskedArray<T> CMaskedArray<T>::operator+=(CMaskedArray<T> const& m1)
+	{
+		CMaskedArray<T> ma;
+		ma.m_mask = m_mask*m1.m_mask;
+		ma.m_data = m_data + m1.m_data;
+		return ma;
+	}
 	
 public:
 
@@ -334,7 +460,7 @@ namespace PYTHON_FUNCTION
 	}
 	
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(const std::valarray<T>& v1, T value, const std::string condition)
+	inline std::valarray<std::size_t> npwhere(const std::valarray<T>& v1, const std::string condition,T value )
 	{
 		
 		std::vector<size_t> index;
@@ -429,7 +555,7 @@ namespace PYTHON_FUNCTION
 
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(const std::vector<T>& v1, T value, const std::string condition)
+	inline std::valarray<std::size_t> npwhere(const std::vector<T>& v1, const std::string condition, T value)
 	{
 
 		std::vector<size_t> index;
@@ -476,7 +602,7 @@ namespace PYTHON_FUNCTION
 
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere(const std::vector<T>& v1, const std::vector<T>& v2, const std::string condition)
+	inline std::valarray<std::size_t> npwhere(const std::vector<T>& v1, const std::string condition, const std::valarray<T>& v2)
 	{
 
 		std::vector<size_t> index;
@@ -813,7 +939,7 @@ namespace PYTHON_FUNCTION
 
 	}
 	template<typename T>
-	inline std::valarray<std::size_t> npwhere( CMaskedArray<T>& v1, T value, char condition)
+	inline std::valarray<std::size_t> npwhere(CMaskedArray<T>& v1, char condition, T value)
 	{
 		std::vector<size_t> index;
 		
@@ -867,10 +993,11 @@ namespace PYTHON_FUNCTION
 		return vec;
 	}
 	template<typename T,typename S>
-	CMaskedArray<T> ma_masked_where(std::valarray<T> data,  T value, std::valarray<S> data2)
+	CMaskedArray<T> ma_masked_where(std::valarray<T> data,  T value, std::valarray<S> data2,S missing_value)
 	{
 
 		CMaskedArray<S> dummy = CMaskedArray<S>(data2);
+		dummy.masked(missing_value);
 		for (size_t i = 0; i < data.size(); i++)
 		{
 			if (data[i] == value)
@@ -1010,7 +1137,7 @@ namespace PYTHON_FUNCTION
 		equivalent to compressed,masqued_equals here
 	*/
 	template<typename T>
-	inline std::valarray <T> masked_values(std::valarray<T> v1, T value)
+	inline std::valarray <T> masked_values(std::valarray<T>& v1, T value)
 	{
 		std::valarray<bool> masque(true,v1.size());
 		for (int i = 0; i < v1.size(); i++)
@@ -1018,6 +1145,22 @@ namespace PYTHON_FUNCTION
 			if (v1[i] == value) masque[i]=false ;
 		}
 		return v1[masque];
+	}
+	template<typename T>
+	inline CMaskedArray<T> ma_masked_values(std::valarray<T>& v1, T value)
+	{
+		CMaskedArray<T> r_array(value, v1);
+		r_array.masked(value);
+
+		return r_array;
+	}
+	template<typename T>
+	inline CMaskedArray<T> ma_masked_values(const CMaskedArray<T>& v1, T value)
+	{
+		CMaskedArray<T> r_array=v1;
+		r_array.fill(value,true);
+		r_array.masked(value);
+		return r_array;
 	}
 	template<typename T>
 	inline varrayfloat histogram(std::valarray<T>& data, varrayfloat& bin,bool density=false)
@@ -1063,22 +1206,48 @@ namespace PYTHON_FUNCTION
 			}
 		return hist;
 	}
-	inline void concatenate(varrayfloat &val1, varrayfloat val2)
+	inline void Concatenate(varrayfloat &val1, const varrayfloat& val2)
 	{
 		varrayfloat val(val1.size() + val2.size());
 		for (size_t i = 0; i < val1.size(); i++)
+		{
 			val[i] = val1[i];
+		}
+		int j = 0;
 		for (size_t i = val1.size(); i < val.size(); i++)
-			val[i] = val2[i];
+		{
+			val[i] = val2[j++];
+		}
 		val1.resize(val.size());
 		val1 = val;
 	}
-
+	inline void Concatenate(CMaskedArray<float>& val1, const CMaskedArray<float>& val2)
+	{
+		CMaskedArray<float>  val(val1.size() + val2.size());
+		for (size_t i = 0; i < val1.size(); i++)
+		{
+			val.m_data[i] = val1.m_data[i];
+			val.m_mask[i] = val1.m_mask[i];
+		}
+		int j = 0;
+		for (size_t i = val1.size(); i < val.size(); i++)
+		{
+			val.m_data[i] = val2.m_data[j];
+			val.m_mask[i] = val2.m_mask[j];
+			j++;
+		}
+		val.masked(val1.m_fill_value);
+		val1.resize(val.size());
+		val1 = val;
+	}
 	template<typename T>
-	void np_roll(std::valarray<T> &val, size_t value)
+	void np_roll(std::valarray<T> &val, int valeur)
 	{
 		std::valarray<T> val1(val.size());
-
+		int  value;
+		if (valeur > 0) value = valeur;
+		else value = val.size() + valeur;
+		
 		for (size_t i = 0; i < value; i++)
 			val1[i] = val[val.size() - value + i];
 
@@ -1197,7 +1366,7 @@ namespace PYTHON_FUNCTION
 
 		return m_data;
 	}
-
+	
 	template<typename T>
 	inline std::vector<std::valarray<T>> C_reshape(std::valarray<T> data, size_t col)
 	{
@@ -1224,11 +1393,11 @@ namespace PYTHON_FUNCTION
 		return m_data;
 	}
 	
-	inline std::vector<CMaskedArray<float>> C_reshape(CMaskedArray<float> a_data, size_t col)
+	inline std::vector<CMaskedArray<float>> C_reshape( CMaskedArray<float>& a_data, size_t col)
 	{
 		std::vector<CMaskedArray<float>> m_data;
 		int iteration = 1;
-		CMaskedArray<float> dummy = CMaskedArray<float>::CMaskedArray(0., col);
+		CMaskedArray<float> dummy(a_data.m_fill_value, col,true);
 		for (size_t i = 0; i < a_data.size();++i)
 		{
 			if (iteration <= col)
@@ -1239,6 +1408,7 @@ namespace PYTHON_FUNCTION
 			}
 			else
 			{
+				dummy.masked(a_data.m_fill_value);
 				m_data.push_back(dummy);
 				dummy.resize(col);
 				dummy.m_data[0] = a_data.m_data[i];
@@ -1246,13 +1416,14 @@ namespace PYTHON_FUNCTION
 				iteration = 2;
 			}
 		}
+		dummy.masked(a_data.m_fill_value);
 		m_data.push_back(dummy);
-
+		
 		return m_data;
 	}
 
 	template<typename T>
-	inline std::vector<std::valarray<T>> L_reshape(std::vector<T> data, size_t line)
+	inline std::vector<std::valarray<T>> L_reshape(const std::vector<T>& data, const size_t line)
 	{
 
 		std::vector<std::valarray<T>> m_data;
@@ -1289,20 +1460,19 @@ namespace PYTHON_FUNCTION
 
 		return m_data;
 	}
-
 	template<typename T>
-	inline std::vector<std::valarray<T>> L_reshape(std::valarray<T> data, size_t line)
+	inline std::vector<std::valarray<T>> L_reshape(const std::valarray<T>& data, const size_t line)
 	{
-		std::vector<std::valarray<T> m_data;
+		std::vector<std::valarray<T>> m_data;
 		int col = int(data.size() / line);
 		std::valarray<T> month(col);
 		int index = 0;
 		int compteur = 0;
 		int iteration = 1;
 
-		for (int i = 0; i < month_ranges.size(); i += line)
+		for (int i = 0; i < data.size(); i += line)
 		{
-			if (iteration <= coi && i < data.size() && compteur<line)
+			if (iteration <= col && i < data.size() && compteur<line)
 			{
 				month[index++] = data[i];
 				iteration++;
@@ -1328,11 +1498,12 @@ namespace PYTHON_FUNCTION
 		return m_data;
 	}
 
-	inline std::vector<CMaskedArray<float>> L_reshape(CMaskedArray<float> a_data, size_t line)
+	inline std::vector<CMaskedArray<float>> L_reshape(CMaskedArray<float>& a_data, const size_t line)
 	{
 		std::vector<CMaskedArray<float>> m_data;
 		int col = int(a_data.size() / line);
-		CMaskedArray<float> month = CMaskedArray<float>::CMaskedArray(0, col);
+		CMaskedArray<float> month(0, col);
+		month.masked(a_data.m_fill_value);
 		size_t index = 0;
 		int compteur = 0;
 		int iteration = 1;
@@ -1366,6 +1537,50 @@ namespace PYTHON_FUNCTION
 
 		return m_data;
 	}
+	template<typename T>
+	inline std::vector<std::valarray<std::pair<T, T>>> L_reshape3(std::vector<std::pair<T, T>>& data, const size_t dimline)
+	{
+		std::vector<std::valarray<std::pair<T, T>>> m_data;
+		int index = 0;
+		int compteur = 0;
+		int iteration = 1;
+		size_t dimCol = int(data.size() / (dimline));
+		std::valarray<pair<T, T>> month(dimCol);
+		std::vector<pair<int, int>>::iterator month_it = data.begin();
+		for (int i = 0; i < data.size(); i += dimline)
+		{
+			if (iteration <= dimCol && i < data.size() && compteur<dimline)
+			{
+				month[index++] = make_pair(month_it->first, month_it->second);
+				iteration++;
+				if (i + dimline < data.size()) std::advance(month_it, dimline);
+			}
+			else
+			{
+				if (compteur == dimline) break;
+				m_data.push_back(month);
+				compteur++;
+				month.resize(dimCol);
+				index = 0;
+				i = m_data.size();
+				month_it = data.begin();
+				std::advance(month_it, i);
+				month[index++] = make_pair(month_it->first, month_it->second);
+				std::advance(month_it, dimline);
+				iteration = 2;
+			}
+			if (i + dimline >= data.size() && compteur<dimline)
+			{
+				i = m_data.size();
+				month_it = data.begin();
+				std::advance(month_it, i + 1);
+			}
+
+		}
+
+		return m_data;
+	}
+
 	inline bool IsmaskedValue(varrayfloat data, float missing_value)
 	{
 		varrayfloat m_data = data[data == missing_value];
@@ -1378,7 +1593,7 @@ namespace PYTHON_FUNCTION
 		varrayfloat m_data = data[data == missing_value];
 		return m_data.size();
 	}
-	
+
 	template<typename T>
 	std::valarray<T> npDiff(std::valarray<T> data)
 	{
@@ -1390,5 +1605,5 @@ namespace PYTHON_FUNCTION
 		}
 		return diff;
 	}
-	
+
 }

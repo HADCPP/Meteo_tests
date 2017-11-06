@@ -49,7 +49,7 @@ namespace INTERNAL_CHECKS
 	*/
 
 	void duplication_test(const valarray<float>& source_data, const valarray<float>& target_data, const varraysize& valid, int sm, int tm,
-		map<int, int>::const_iterator source_month, map<int, int>::const_iterator  target_month, valarray<int>& duplicated, CStation& station, int flag_col)
+		std::vector<pair<int, int>> ::const_iterator source_month, std::vector<pair<int, int>> ::const_iterator  target_month, valarray<int>& duplicated, CStation& station, int flag_col)
 	{
 		
 		is_month_duplicated(source_data, target_data, valid, sm, tm, duplicated);
@@ -85,22 +85,23 @@ namespace INTERNAL_CHECKS
 	:param file logfile: logfile to store outputs
 
 	*/
-	void dmc(CStation& station, std::vector<std::string> variable_list, std::vector<std::string> full_variable_list,
+	void dmc(CStation& station, std::vector<std::string>& variable_list, std::vector<std::string>& full_variable_list,
 		int flag_col, boost::gregorian::date start, boost::gregorian::date end, ofstream &logfile)
 	{
 		const  int MIN_DATA_REQUIRED = 20;
 		//get array of MAP<INT,INT> start / end pairs
-		map<int, int > month_ranges;
+		std::vector<pair<int, int>> month_ranges;
 		month_ranges = UTILS::month_starts_in_pairs(start, end);
 		
 		int v = 0;
 		for (string variable: variable_list)
 		{
 			CMetVar & st_var = station.getMetvar(variable); //Recuperer la variable meteo de la CStation
+			float missing_value = Cast<float>(st_var.getMdi());
 			valarray<int> duplicated(0,month_ranges.size());
 			
 			int sm = 0;
-			for (map<int, int>::const_iterator source_month = month_ranges.begin(); source_month != month_ranges.end(); ++source_month)
+			for (std::vector<pair<int, int>> ::const_iterator source_month = month_ranges.begin(); source_month != month_ranges.end(); ++source_month)
 			{
 				cout << "Month  " << (sm + 1) << "  of   " << month_ranges.size() << endl;
 				int taille_slice = source_month->second - source_month->first;
@@ -109,59 +110,54 @@ namespace INTERNAL_CHECKS
 				{
 					indices[i] = source_month->first + i;
 				}
-				valarray<float> source_data(taille_slice);
-				
-				source_data = st_var.getData()[indices];
+				CMaskedArray<float> source_data=st_var.getData()[indices];
+				source_data.masked(Cast<float>(st_var.getMdi()));
 				if (duplicated[sm] == 0)   // don't repeat if already a duplicated
 				{
-					map<int, int>::const_iterator target_month = source_month;
+					std::vector<pair<int, int>> ::const_iterator target_month = source_month;
 					target_month++;
 
 					int tm = 0;
 					for (; target_month != month_ranges.end(); ++target_month)
 					{
-						valarray<float> target_data;
+						
 						int taille_slice = target_month->second - target_month->first ;
 						varraysize indices(taille_slice);
 						for (size_t i = 0; i < taille_slice; i++)
 						{
 							indices[i] = target_month->first + i;
 						}
-						target_data = st_var.getData()[indices];
-						
+						CMaskedArray<float> target_data = st_var.getData()[indices];
+						target_data.masked(Cast<float>(st_var.getMdi()));
 						//match the data periods
 						size_t overlap = std::min(source_data.size(), target_data.size());
-						CMaskedArray<float> s_data = CMaskedArray<float>::CMaskedArray(overlap);
-						CMaskedArray<float> t_data = CMaskedArray<float>::CMaskedArray(overlap);
-
-						s_data.m_data = source_data[slice(0,overlap,1)];
-						t_data.m_data = target_data[slice(0,overlap,1)];
-						varrayfloat dum = s_data.compressed();
-						float a = st_var.getFdi();
-						
-
-						varraysize s_valid = npwhere<float>(s_data.compressed(), st_var.getFdi(),"!");
-						varraysize t_valid = npwhere<float>(t_data.compressed(), st_var.getFdi(), "!");
+						CMaskedArray<float> s_data = source_data.m_data[slice(0, overlap, 1)];  
+						CMaskedArray<float> t_data = target_data.m_data[slice(0, overlap, 1)]; 
+						s_data.masked( missing_value );
+						t_data.masked(missing_value);
+												
+						varraysize s_valid = npwhere<float>(s_data.compressed(), "!", st_var.getFdi());
+						varraysize t_valid = npwhere<float>(t_data.compressed(), "!", st_var.getFdi());
 						//if enough of an overlap
 						if (s_valid.size() >= MIN_DATA_REQUIRED && t_valid.size() >= MIN_DATA_REQUIRED)
 						{
 							if (s_valid.size() < t_valid.size())
-								duplication_test(source_data, target_data, s_valid, sm, tm, source_month, target_month, duplicated, station, flag_col);
+								duplication_test(source_data.m_data, target_data.m_data, s_valid, sm, tm, source_month, target_month, duplicated, station, flag_col);
 							else //swap the list of valid points 
-								duplication_test(source_data, target_data, t_valid, sm, tm, source_month, target_month, duplicated, station, flag_col);
+								duplication_test(source_data.m_data, target_data.m_data, t_valid, sm, tm, source_month, target_month, duplicated, station, flag_col);
 						}
 						tm++;
 					}//target month
 				}
 				sm++;
 			}//souce month
-			varraysize flag_locs = npwhere(station.getQc_flags()[flag_col], float(0), "!");
+			varraysize flag_locs = npwhere(station.getQc_flags()[flag_col], "!", float(0));
 			UTILS::print_flagged_obs_number(logfile, "Duplicate Month", variable, flag_locs.size());
 			//copy flags into attribute
 			st_var.setFlags(flag_locs, float(1));
 		}
 
-		UTILS::apply_flags_all_variables(station, full_variable_list, 0, logfile, "Duplicate Months check");
+		UTILS::apply_flags_all_variables(station, variable_list, 0, logfile, "Duplicate Months check");
 		append_history(station, "Duplicate Months Check");
 
 	}//End Duplicate Check

@@ -1,11 +1,10 @@
 #include "odd_cluster.h"
 
 
-#include <string>
-#include <iostream>
-#include <algorithm>
 
 using namespace std;
+using namespace UTILS;
+using namespace PYTHON_FUNCTION;
 
 
 
@@ -43,7 +42,7 @@ namespace INTERNAL_CHECKS
 	obs_type - updated observation type
 	*/
 
-	void occ_normal(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
+	void occ_normal(COddCluster& cluster, int &obs_type, int time, const varrayfloat& flags)
 	{
 		cluster.m_last_data=time;
 	}
@@ -58,7 +57,7 @@ namespace INTERNAL_CHECKS
 		: returns :
 		cluster - updated cluster information
 		obs_type - updated observation type*/
-	void occ_in_cluster(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
+	void occ_in_cluster(COddCluster& cluster, int &obs_type, int time, const varrayfloat& flags)
 	{
 		if (cluster.m_length == 6 || time - cluster.m_start > 24)
 		{
@@ -90,7 +89,7 @@ namespace INTERNAL_CHECKS
 	cluster - updated cluster information
 	obs_type - updated observation type
 	*/
-	void occ_start_cluster(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
+	void occ_start_cluster(COddCluster& cluster, int &obs_type, int time, const varrayfloat& flags)
 	{
 		if (time - cluster.m_last_data >= 48)
 		{
@@ -124,7 +123,7 @@ namespace INTERNAL_CHECKS
        cluster - updated cluster information
        obs_type - updated observation type
 	*/
-	void occ_after_cluster(COddCluster& cluster, int &obs_type, int time, varrayfloat flags)
+	void occ_after_cluster(COddCluster& cluster, int &obs_type, int time, const varrayfloat& flags)
 	{
 		if (time - cluster.m_end >= 48)
 		{
@@ -158,14 +157,10 @@ namespace INTERNAL_CHECKS
 		}
 	}
 
-	void occ(CStation station, std::vector<std::string> variable_list, std::vector<int>flag_col,
+	void occ(CStation& station, std::vector<std::string>& variable_list, std::vector<int>& flag_col,
 		std::ofstream &logfile, bool second)
 	{
-		/*
-			the four options of what to do with each observation
-			the keys give values which are subroutines, and can be called
-			all subroutines have to take the same set of inputs
-		*/
+		
 		
 		int v = 0;
 		for (string variable : variable_list)
@@ -174,7 +169,6 @@ namespace INTERNAL_CHECKS
 			CMaskedArray<float> filtered_data = UTILS::apply_filter_flags(st_var);
 
 			varrayfloat var_flags = station.getQc_flags()[v];	
-			
 			unsigned int prev_flag_number = 0;
 			if (second)
 			{
@@ -185,7 +179,7 @@ namespace INTERNAL_CHECKS
 			//using IDL copy as method to ensure reproducibility (initially)
 			COddCluster oc_details = COddCluster::COddCluster(UTILS::Cast<float>(st_var.getMdi()), UTILS::Cast<float>(st_var.getMdi()), 0, UTILS::Cast<float>(st_var.getMdi()), UTILS::Cast<float>(st_var.getMdi()), -1);
 			int obs_type = 1;
-			for (int time : station.getTime_data())
+			for (int time : station.getMetvar("time").getData())
 			{
 				if (filtered_data.m_mask[time] == false)
 				{
@@ -213,7 +207,7 @@ namespace INTERNAL_CHECKS
 				
 			}
 			station.setQc_flags(var_flags, v);
-			varraysize flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], float(0), "!");
+			varraysize flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], "!", float(0));
 			UTILS::print_flagged_obs_number(logfile, "Odd Cluster", variable, flag_locs.size() - prev_flag_number);
 			//copy flags into attribute
 			st_var.setFlags(flag_locs, float(1));

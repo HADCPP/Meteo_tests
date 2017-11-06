@@ -5,13 +5,16 @@
 #include "ncFile.h"
 #include "ncDim.h"
 #include "ncVar.h"
-#include "duplicate_months.h"
+#include "Utilities.h"
 #include "utils.h"
-#include "frequent_values.h"
+
+// Tests
+#include "duplicate_months.h"
 #include "odd_cluster.h"
+#include "frequent_values.h"
+#include "Diurnal_cycle.h"
 #include "records.h"
 #include "streaks.h"
-#include "Utilities.h"
 #include "spike.h"
 #include "humidity.h"
 #include "clouds.h"
@@ -33,11 +36,11 @@
 
 struct test
 {
-	bool duplicate = true;
-	bool odd = true;
-	bool frequent = true;
-	bool diurnal = true;
-	bool gap = true;
+	bool duplicate = false;
+	bool odd = false;
+	bool frequent = false;
+	bool diurnal = false;
+	bool gap = false;
 	bool records = true;
 	bool streaks = true;
 	bool climatological = true;

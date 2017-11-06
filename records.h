@@ -6,10 +6,12 @@
 #pragma once
 #include "station.h"
 #include "Utilities.h"
+#include "utils.h"
+#include "python_function.h"
 
 #include <vector>
 #include <map>
-#include<string>
+#include	<string>
 #include <iostream>
 
 
@@ -28,7 +30,7 @@ namespace INTERNAL_CHECKS
 		: param int col : column to use
 		'''
 	*/
-	void krc_set_flags(std::valarray<size_t> locs, CStation& station, int col);
+	void krc_set_flags(std::valarray<size_t>& locs, CStation& station, int col);
 		
 	/*
 		Run the known records check for each variable in list
@@ -39,5 +41,5 @@ namespace INTERNAL_CHECKS
 		:param file logfile: logfile to store output
 	*/
 	void krc(CStation& station, std::vector<std::string> variable_list, std::vector<int>flag_col,
-		std::ofstream &logfile);
+		std::ofstream& logfile);
 }

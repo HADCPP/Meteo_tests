@@ -18,7 +18,7 @@ typedef dlib::matrix<double, 3, 1> parameter_vector1;
 namespace UTILS
 {
 	void  month_starts(boost::gregorian::date start, boost::gregorian::date end, std::vector<int>& month_locs);
-	inline std::map<int, int> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end);
+	inline std::vector<std::pair<int, int>> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end);
 	std::valarray<bool> create_fulltimes(CStation& station, std::vector<std::string>& var_list, boost::gregorian::date start,
 		boost::gregorian::date end, std::vector<std::string>& opt_var_list, bool do_input_station_id = true,
 bool do_qc_flags = true, bool do_flagged_obs = true);
@@ -34,13 +34,24 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	'''
 	*/
 	std::valarray<std::pair<float, float>> monthly_reporting_statistics(CMetVar& st_var, boost::gregorian::date start, boost::gregorian::date end);
-	void print_flagged_obs_number(std::ofstream & logfile, std::string test, std::string variable, int nflags, bool noWrite=false);
-	void apply_flags_all_variables(CStation& station, std::vector<std::string> full_variable_list, int flag_col, std::ofstream & logfile, std::string test);
+	
+	/*
+	 Apply these flags to all variables
+
+    :param object station: the station object to be processed
+    :param list all_variables: the variables where the flags are to be applied
+    :param list flag_col: which column in the qc_flags array to work on
+    :param file logfile: logfile to store outputs
+    :param str test_name: test name for printing/loggin
+        :returns:
+	*/
+	void apply_flags_all_variables(CStation& station, const std::vector<std::string>& full_variable_list, int flag_col, std::ofstream & logfile, std::string test);
 	void apply_windspeed_flags_to_winddir(CStation& station);
 	void append_history(CStation& station, std::string text);
 	CMaskedArray<float>  apply_filter_flags(CMetVar& st_var);
-	void print_flagged_obs_number(std::ofstream& logfile, std::string test, std::string variable, int nflags, bool noWrite);
+	void print_flagged_obs_number(std::ofstream& logfile, std::string test, std::string variable, int nflags);
 	inline float __cdecl MyApplyRoundFunc(float n){return std::floor(n);}
+	inline float __cdecl MyApplyCastFloat(int n){ return static_cast<float>(n); }
 	template<typename T>
 	inline T __cdecl MyApplyAbsFunc(T n){return std::abs(n);}
 	inline float __cdecl Log10Func(float n){return std::log10f(n);}
@@ -103,7 +114,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		const double i0 = input(0);
 		const double temp = p0*i0 + p1;
 
-		return temp*temp;
+		return temp;
 	}
 	inline double model1(const input_vector&  input, const parameter_vector1& params)
 	{
@@ -144,12 +155,12 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		const double p1 = params(1);
 
 
-		const double i0 = data.first(0);
+		const double x = data.first(0);
 
-		const double temp = p0*i0 + p1;
+		const double temp = p0*x + p1;
 
-		der(0) = i0; // i0 * 2 * temp;
-		der(1) = 0; // 2 * temp;
+		der(0) = x; // i0 * 2 * temp;
+		der(1) = 1; // 2 * temp;
 
 		return der;
 	}
@@ -178,7 +189,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	*/
 	inline varrayfloat linear(const varrayfloat& X, parameter_vector& p)
 	{
-		return float(p(1)) * X + float(p(0));
+		return float(p(0)) * X + float(p(1));
 	}
 	
 	template<typename T>
@@ -189,7 +200,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		{
 			std::vector<T> dummy = np_abs(indata);
 			dummy = np_ceil<T>(dummy);
-			varrayfloat full_edges = arange<float>(float(3 * (*max(dummy.begin(), dummy.end()))), T(binmin), T(binwidth));
+			varrayfloat full_edges = arange<float>(float(3 * (*std::max_element(dummy.begin(), dummy.end()))), T(binmin), T(binwidth));
 			dummy.clear();
 			varrayfloat full_hist = histogram<int>(np_abs(indata), full_edges);
 			if (full_hist.size() > 1)
@@ -199,9 +210,9 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				int limit = 0;
 				while (limit < 2)
 				{
-					if (npwhere<float>(full_hist, float(0.), "=").size()>0)
+					if (npwhere<float>(full_hist, "=", float(0)).size()>0)
 					{
-						limit = npwhere<float>(full_hist, 0., "=")[i];  //where instead of argwhere??
+						limit = npwhere<float>(full_hist, "=", float(0))[i];  //where instead of argwhere??
 						i++;
 					}
 					else
@@ -212,7 +223,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				}
 				varrayfloat edges = full_edges[std::slice(0, limit, 1)];
 				varrayfloat hist = full_hist[std::slice(0, limit, 1)];
-				hist.apply(Log10Func);
+				hist=hist.apply(Log10Func);
 				//Initialiser les parametres
 
 				// DATA (X,Y)
@@ -230,24 +241,26 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				//Use the Levenberg-Marquardt method to determine the parameters which
 				// minimize the sum of all squared residuals
 				parameter_vector  fit;
-				fit(0) = hist[np_argmax(hist)];
-				fit(1) = 1;
-
+				
+				fit(0) = 1;
+				fit(1) = hist.max();
+				
 				dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
 					residual,
 					residual_derivative,
 					data,
 					fit);
 				varrayfloat fit_curve = linear(full_edges, fit);
-				if (fit(1) < 0)
+				
+				if (fit(0) < 0)
 				{
 					//in case the fit has a positive slope
 					//where does fit fall below log10(-0.1)
-					if (npwhere<float>(fit_curve, float(-1), "<").size()>0)
+					if (npwhere<float>(fit_curve, "<", float(-1)).size()>0)
 					{
-						size_t fit_below_point1 = npwhere<float>(fit_curve, float(-1), "<")[0];
+						size_t fit_below_point1 = npwhere<float>(fit_curve, "<", float(-1))[0];
 						varrayfloat dummy = full_hist[slice(fit_below_point1, full_hist.size() - fit_below_point1, 1)];
-						size_t first_zero_bin = npwhere<float>(dummy, 0, "=")[0] + 1;
+						size_t first_zero_bin = npwhere<float>(dummy, "=", 0)[0] + 1;
 						threshold = binwidth*(fit_below_point1 + first_zero_bin);
 					}
 					else
@@ -289,9 +302,9 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				int limit = 0;
 				while (limit < 2)
 				{
-					if (npwhere<float>(full_hist, float(0.), "=").size()>0)
+					if (npwhere<float>(full_hist, "=", float(0)).size()>0)
 					{
-						limit = npwhere<float>(full_hist, 0., "=")[i];  //where instead of argwhere??
+						limit = npwhere<float>(full_hist, "=", float(0))[i];  //where instead of argwhere??
 						i++;
 					}
 					else
@@ -320,8 +333,8 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				//Use the Levenberg-Marquardt method to determine the parameters which
 				// minimize the sum of all squared residuals
 				parameter_vector  fit;
-				fit(0) = hist[np_argmax(hist)];
-				fit(1) = 1;
+				fit(0) = 1;
+				fit(1) = hist.max();
 
 				dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
 					residual,
@@ -333,11 +346,11 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				{
 					//in case the fit has a positive slope
 					//where does fit fall below log10(-0.1)
-					if (npwhere<float>(fit_curve, float(-1), "<").size()>0)
+					if (npwhere<float>(fit_curve, "<", float(-1)).size()>0)
 					{
-						size_t fit_below_point1 = npwhere<float>(fit_curve, float(-1), "<")[0];
+						size_t fit_below_point1 = npwhere<float>(fit_curve, "<", float(-1))[0];
 						varrayfloat dummy = full_hist[std::slice(fit_below_point1, full_hist.size() - fit_below_point1, 1)];
-						size_t first_zero_bin = npwhere<float>(dummy, 0, "=")[0] + 1;
+						size_t first_zero_bin = npwhere<float>(dummy, "=", 0)[0] + 1;
 						threshold = binwidth*(fit_below_point1 + first_zero_bin);
 					}
 					else
@@ -404,5 +417,15 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		fits[1] = fit(1);
 		fits[2] = fit(2);
 		return fits;
+	}
+	template<typename T>
+	T Somme(std::vector<T> vec)
+	{
+		T sum = 0;
+		for (size_t i = 0; i < vec.size(); i++)
+		{
+			sum += vec[i];
+		}
+		return sum;
 	}
 }

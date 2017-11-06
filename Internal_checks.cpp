@@ -45,21 +45,21 @@ namespace INTERNAL_CHECKS
 				}
 			}
 			logfile << boost::gregorian::day_clock::local_day() << endl;
-			logfile << "Internal Checks" << endl;
-			logfile << "Station Identifier : " << (station).getId() << endl;
+			logfile << " Internal Checks " << endl;
+			logfile << " Station Identifier  :  " << (station).getId() << endl;
 
 			boost::posix_time::ptime process_start_time = boost::posix_time::second_clock::local_time();
 			
 			/* latitude and longitude check  */
 			if (std::abs((station).getLat()) > 90.)
 			{
-				logfile << (station).getId() << "	Latitude check" << DATESTART.year()<<DATEEND.year()-1<<"  Unphysical latitude ";
+				logfile << (station).getId() << "	Latitude check   " << DATESTART.year() << DATEEND.year() - 1 << "    Unphysical latitude " << endl;
 				logfile.close();
 				continue;
 			}
 			if (std::abs((station).getLon()) > 180.)
 			{
-				logfile << (station).getId() << "Longitude Check"  << DATESTART.year() << DATEEND.year() - 1 << "  Unphysical longitude ";
+				logfile << (station).getId() << "Longitude Check" << DATESTART.year() << DATEEND.year() - 1 << "  Unphysical longitude " << endl;
 				logfile.close();
 				continue;
 			}
@@ -80,12 +80,12 @@ namespace INTERNAL_CHECKS
 				NETCDFUTILS::read(filename,station,process_var,carry_thru_vars);
 				
 				//lire dans le fichier netcdf
-				logfile << "Total CStation record size" << station.getMetvar("time").getData().size() << endl;
+				logfile << "Total CStation record size  " << station.getMetvar("time").getData().size() << endl;
 				match_to_compress = UTILS::create_fulltimes(station,process_var, DATESTART, DATEEND, carry_thru_vars);
 
 				//Initialiser CStation.qc_flags
-
-				station.InitializeQcFlags(station.getTime_data().size(), 69);
+				
+				station.InitializeQcFlags(69,station.getMetvar("time").getData().size());
 
 				for (string var : process_var)
 				{
@@ -115,37 +115,37 @@ namespace INTERNAL_CHECKS
 				//Appel à la fonction duplicate_months de qc_tests
 				vector<string> variable_list = { "temperatures" };
 				
-				dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile);
+				//dmc(station,variable_list, process_var,0, DATESTART, DATEEND,logfile);
 			}
 			if (mytest.odd)
 			{
 				vector<string> variable_list = { "temperatures","dewpoints","windspeeds","slp"};
 				vector<int> flag_col = { 54, 55, 56, 57 };
 				//occ(station, variable_list, flag_col, logfile, second);
-				UTILS::apply_windspeed_flags_to_winddir(station);
+				//UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.frequent)
 			{
 				
-				//FREQUENT_VALUES::fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
+				//fvc(station, { "temperatures","dewpoints","slp" }, { 1, 2, 3 }, DATESTART, DATEEND, logfile);
 			}
 			if (mytest.diurnal)
 			{
-				if (std::abs(station.getLat()) <= 60.)
-					cout << "  ";
+				/*if (std::abs(station.getLat()) <= 60.)
+					dcc(station, { "temperatures" }, process_var, { 4 }, logfile);
 				else
-					logfile << "Diurnal Cycle Check not run as CStation latitude" << station.getLat()<< "  > 60 ";
+					logfile << "   Diurnal Cycle Check not run as CStation latitude  " << station.getLat()<< "  >  60 ";*/
 			}
 			if (mytest.records)
 			{
 				//krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
-				UTILS::apply_windspeed_flags_to_winddir(station);
+				//UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.streaks)
 			{
-				/*rsc(station, { "temperatures", "dewpoints", "windspeeds", "slp", "winddirs" }, { { 12, 16, 20 }, { 13, 17, 21 }, { 14, 18, 22 }, { 15, 19, 23 }, { 66, 67, 68 } },
-				DATESTART, DATEEND,logfile);*/
-				UTILS::apply_windspeed_flags_to_winddir(station);
+				//rsc(station, { "temperatures", "dewpoints", "windspeeds", "slp", "winddirs" }, { { 12, 16, 20 }, { 13, 17, 21 }, { 14, 18, 22 }, { 15, 19, 23 }, { 66, 67, 68 } },
+				//DATESTART, DATEEND,logfile);
+				//UTILS::apply_windspeed_flags_to_winddir(station);
 
 			}
 			if (mytest.climatological)
@@ -154,7 +154,7 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.spike)
 			{
-				//sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
+				sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
 				UTILS::apply_windspeed_flags_to_winddir(station);
 			}
 			if (mytest.humidity)
@@ -173,7 +173,7 @@ namespace INTERNAL_CHECKS
 			if (first)
 			{
 				string filename = NETCDF_DATA_LOCS + (station).getId() + "_internal.nc";
-				NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
+				//NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
 			}
 			else if (second)
 			{

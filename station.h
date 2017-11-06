@@ -46,9 +46,16 @@ public:
 	void setStandard_name(std::string standard_name){ m_standard_name = standard_name; }
 	void setReportingStats(std::valarray<std::pair<float, float>> reporting_stats){ m_reporting_stats = reporting_stats; }
 	void setFlagged_obs(CMaskedArray<float>  flagged_obs){ m_flagged_obs = flagged_obs; }
+	void setFlagged_obs(varrayfloat  flagged_obs){ m_flagged_obs.m_data = flagged_obs; }
 	void setFlags(CMaskedArray<float> flag){ m_flags = flag; }
 	void setFlags(varraysize v_flag,float flag){ m_flags.m_data[v_flag] = flag; }
-	void setData(varrayfloat data){ m_dataVar.m_data = data; }
+	void setFlags(size_t size, float flag){ m_flags.resize(size,flag); }
+	void setData(varrayfloat data)
+	{ 
+		m_dataVar.m_data = data; 
+		m_dataVar.m_mask.resize(data.size(), false);
+		m_dataVar.m_masked_indices.clear();
+	}
 	void setData(varraysize data, float val){ m_dataVar.m_data[data] = val; }
 	void setData(CMaskedArray<float> data){ m_dataVar = data; }
 	void setData(varraysize indices,float value,bool mask)

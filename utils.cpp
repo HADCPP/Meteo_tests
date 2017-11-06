@@ -61,21 +61,21 @@ namespace UTILS
 			: param datetime end : end of data
 			: returns : month_ranges : Nx2 array
 	*/
-	inline map<int,int> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end)
+	inline std::vector<std::pair<int,int>> month_starts_in_pairs(boost::gregorian::date start, boost::gregorian::date end)
 	{
 		//set up the arrays of month start locations
 		std::vector<int> m_starts;
 		month_starts(start, end,m_starts);
 
-		map<int,int > month_ranges; 
+		std::vector<std::pair<int, int>> month_ranges;
 			
 		for (int i =0 ; i < m_starts.size()-1; i++)
 		{
-			month_ranges[m_starts[i]] = m_starts[i + 1];
+			month_ranges.push_back(make_pair(m_starts[i],m_starts[i + 1]));
 		}
 		boost::gregorian::date_duration difference = end - start;
 			
-		month_ranges[m_starts[m_starts.size()-1]] = difference.days() * 24;
+		month_ranges.push_back(make_pair(m_starts[m_starts.size()-1],difference.days() * 24));
 
 		return month_ranges;
 	}
@@ -84,7 +84,7 @@ namespace UTILS
 	{
 		//expand the time axis of the variables
 		boost::gregorian::date_duration DaysBetween = end - start;
-		valarray<int> fulltimes;
+		valarray < float > fulltimes;
 		
 		//adjust if input netCDF file has different start date to desired
 		string time_units = station.getTime_units();
@@ -95,12 +95,12 @@ namespace UTILS
 		boost::gregorian::date  netcdf_start = boost::gregorian::date_from_iso_string(time_units);
 		boost::gregorian::date_duration offset = start- netcdf_start;
 		
-		fulltimes = PYTHON_FUNCTION::arange<int>(DaysBetween.days() * 24, offset.days() * 24);
+		fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24, offset.days() * 24);
 
 		valarray<bool> match, match_reverse;
 
-		match = PYTHON_FUNCTION::in1D<int, float>(fulltimes, station.getMetvar("time").getData());
-		match_reverse = PYTHON_FUNCTION::in1D<float, int>(station.getMetvar("time").getData(), fulltimes);
+		match = PYTHON_FUNCTION::in1D<float, float>(fulltimes, station.getMetvar("time").getData());
+		match_reverse = PYTHON_FUNCTION::in1D<float, float>(station.getMetvar("time").getData(), fulltimes);
 
 		//if optional/carry through variables given, then set to extract these too
 		std::vector<string> full_var_list = var_list;
@@ -117,18 +117,18 @@ namespace UTILS
 			CMetVar& st_var = station.getMetvar(variable);
 			//use masked arrays for ease of filtering later
 			
-			CMaskedArray<float> news = CMaskedArray<float>(Cast<float>(st_var.getMdi()), fulltimes.size());
-			news.m_mask = true;
+			CMaskedArray<float> news(Cast<float>(st_var.getMdi()), fulltimes.size());
+			news.masked(Cast<float>(st_var.getMdi()));
 			
 			if (match_reverse.size()!= 0)	
 			{
-				varrayfloat dummy = st_var.getData()[match_reverse];
-				news.m_data[match] = dummy;
-				news.m_mask[match] = false;
+				CMaskedArray<float> dummy=st_var.getData()[match_reverse];
+				dummy.masked(Cast<float>(st_var.getMdi()));
+				news.fill(match,dummy);
 			}
 			//but re-mask those filled timestamps which have missing data
 						
-			station.getMetvar(variable).setData(ma_masked_where<float,float>(news.m_data, Cast<float>(st_var.getMdi()), news.m_data));
+			station.getMetvar(variable).setData(news);
 						
 			if (find(var_list.begin(), var_list.end(), variable) != var_list.end() && do_flagged_obs == true)
 			{
@@ -137,7 +137,7 @@ namespace UTILS
 				if (st_var.getFlagged_obs().size() != 0)
 				{
 					varrayfloat dummy = st_var.getFlagged_obs().m_data[match_reverse];
-					news.m_data[match] = dummy;
+					news.fill(match,dummy);
 				}
 				st_var.setFlagged_obs(news);
 
@@ -147,7 +147,7 @@ namespace UTILS
 				{
 
 					varrayfloat dummy = st_var.getFlags().m_data[match_reverse];
-					news.m_data[match] = dummy;
+					news.fill(match,dummy);
 				}
 				st_var.setFlags(news);
 				
@@ -169,8 +169,9 @@ namespace UTILS
 		}
 
 		//working in fulltimes throughout and filter by missing
-		if (offset.days() != 0)	fulltimes = PYTHON_FUNCTION::arange<int>(DaysBetween.days() * 24, offset.days() * 24);
-		station.setTime_data(fulltimes);
+		if (offset.days() != 0)	fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24, offset.days() * 24);
+		station.getMetvar("time").setData(fulltimes);
+		
 		return match;
 	}
 
@@ -178,7 +179,7 @@ namespace UTILS
 
 	valarray<std::pair<float, float>> monthly_reporting_statistics(CMetVar& st_var, boost::gregorian::date start, boost::gregorian::date end)
 	{
-		map<int, int> monthly_ranges;
+		std::vector<pair<int, int>> monthly_ranges;
 		monthly_ranges= month_starts_in_pairs(start, end);
 		valarray<std::pair<float, float>> reporting_stats(monthly_ranges.size());
 
@@ -200,10 +201,9 @@ namespace UTILS
 		}
 		return reporting_stats;
 	}
-	 void print_flagged_obs_number(std::ofstream& logfile, string test, string variable, int nflags, bool noWrite)
+	 void print_flagged_obs_number(std::ofstream& logfile, string test, string variable, int nflags)
 	{
-		if (!noWrite)
-		logfile << test<< " Check Flags :"<< variable  <<" :"<< nflags;
+		logfile << test<< "  Check Flags :  "<< variable  <<" :  "<< nflags;
 	}
 	/*
 	Apply these flags to all variables
@@ -212,9 +212,17 @@ namespace UTILS
 		: param file logfile : logfile to store outputs
 		: returns :
 		*/
-	 void apply_flags_all_variables(CStation& station, std::vector<string> full_variable_list, int flag_col, ofstream& logfile, string test)
+	 void apply_flags_all_variables(CStation& station, const std::vector<string>& full_variable_list, int flag_col, ofstream& logfile, string test)
 	{
+		varraysize flag_locs = npwhere(station.getQc_flags()[flag_col], "!", float(0));
 
+		for (string var : full_variable_list)
+		{
+			CMetVar& st_var = station.getMetvar(var);
+			//copy flags into attribute
+			st_var.setFlags(flag_locs, float(1));
+			logfile << "Applying  " << test<< "flags to  "<<var<< endl;
+		}
 	}
 	/*
 	Applying windspeed flags to wind directions synergistically
@@ -248,7 +256,7 @@ namespace UTILS
 
 	CMaskedArray<float> apply_filter_flags(CMetVar& st_var)
 	{
-		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags().m_data,float(1),st_var.getData());
+		return  PYTHON_FUNCTION::ma_masked_where<float,float>(st_var.getFlags().m_data,float(1),st_var.getData(),Cast<float>(st_var.getMdi()));
 	}
 
 	inline float reporting_accuracy(CMaskedArray<float>& indata, bool winddir)
@@ -299,7 +307,7 @@ namespace UTILS
 
 	float reporting_frequency(CMaskedArray<float>& indata)
 	{
-		varraysize masked_locs = npwhere(indata.m_mask, false, "=");
+		varraysize masked_locs = npwhere(indata.m_mask, "=", false);
 		float frequency = float(-1);
 
 		if (masked_locs.size()>0)
@@ -320,12 +328,13 @@ namespace UTILS
 	/* create bins and bin centres from data 
 		given bin width covers entire range */
 	
-	void create_bins(varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters)
+	void create_bins(varrayfloat& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters)
 	{
 		//set up the bins
 		int bmins = int(floor(indata.min()));
 		int bmax = int(ceil(indata.max()));
 		bins = PYTHON_FUNCTION::arange<float>(bmax + (3. * binwidth), bmins - binwidth, binwidth);
+		bincenters.resize(bins.size());
 		for (int i = 0; i < bins.size() - 1; i++)
 				bincenters[i] = 0.5*(bins[i] + bins[i+1]);
 
@@ -403,12 +412,12 @@ namespace UTILS
 			if (pct < 0.5)
 			{
 				percentile = percentiles(data, pct, idl );
-				locs = npwhere(data, percentile, "<");
+				locs = npwhere(data, "<", percentile);
 			}
 			else
 			{
 				percentile = percentiles(data, pct, idl);
-				locs = npwhere(data, percentile, ">");
+				locs = npwhere(data, ">", percentile);
 			}
 			data[locs] = percentile;
 

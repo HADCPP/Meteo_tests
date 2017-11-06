@@ -4,6 +4,9 @@
 #include "python_function.h"
 #include "Utilities.h"
 
+
+#include <iostream>
+#include <algorithm>
 #include <iostream>
 #include <valarray>
 #include <vector>
@@ -41,6 +44,6 @@ namespace INTERNAL_CHECKS
 		: param bool second : run for second time
 		: returns :
 		*/
-	void occ(CStation station, std::vector<std::string> variable_list, std::vector<int>flag_col, 
+	void occ(CStation& station, std::vector<std::string>& variable_list, std::vector<int>& flag_col, 
 		std::ofstream &logfile, bool second = false);
 }

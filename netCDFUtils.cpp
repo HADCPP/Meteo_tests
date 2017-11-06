@@ -19,13 +19,11 @@
 #include <zlib.h>
 #include <cstring>
 #include <boost/filesystem.hpp>
-#include "ncException.h"
-#include "map"
-#include "ncVarAtt.h"
-#include "python_function.h"
+
 
 
 using namespace PYTHON_FUNCTION;
+using namespace UTILS;
 using namespace boost;
 using namespace std;
 using namespace netCDF;
@@ -401,18 +399,15 @@ namespace NETCDFUTILS
 	//and appends attributes to station object variables to be read passed
 	// in as list
 	*/
-	void read(string filename, CStation& station, std::vector<std::string> process_var, vector<string>  opt_var_list, bool read_input_station_id, bool read_qc_flags, bool read_flagged_obs)
+	void read(string filename, CStation& station, std::vector<std::string>& process_var, vector<string>&  opt_var_list, bool read_input_station_id, bool read_qc_flags, bool read_flagged_obs)
 	{
-
 		
-
 			NcFile ncFile(filename.c_str(), NcFile::read, NcFile::nc4classic);
 
 			//Ouverture du fichier netcdf  relié à la station en mode read
 			if (ncFile.isNull()) return;
 
-			vector<string> full_var_list;
-			copy(process_var.begin(), process_var.end(), std::back_inserter(full_var_list));
+			vector<string> full_var_list = process_var;
 			if (opt_var_list.size() != 0)
 			{
 				copy(opt_var_list.begin(), opt_var_list.end(), std::back_inserter(full_var_list));
@@ -425,36 +420,28 @@ namespace NETCDFUTILS
 			}
 			else full_var_list.push_back("time");
 
-			for (vector<string>::iterator variable = full_var_list.begin(); variable != full_var_list.end(); ++variable)
+			for (string variable : full_var_list)
 			{
-				NcVar var = ncFile.getVar(*variable); //Extraire la variable netcdf associée à la variable de process_vars;
+				NcVar var = ncFile.getVar(variable); //Extraire la variable netcdf associée à la variable de process_vars;
 				/*map<string, NcVarAtt> atts = var.getAtts();
 				for (map<string, NcVarAtt>::iterator it = atts.begin(); it !=atts.end(); it++)
 				cout << (*it).first << endl;*/
 				string att = getAttribute<string>(var, "long_name");
 				//Instanciation  objet CMetVar avec le nom de la variable netcdf
-				CMetVar this_var = CMetVar(*variable, att);
+				CMetVar this_var = CMetVar(variable, att);
 				//Ajout des attributs à l'objet CMetVar
 				//Attribut unit
 				try{ this_var.setUnits(getAttribute<string>(var, "units")); }
 				catch (NcException &e)
 				{
-					cerr <<1 <<"	"<< *variable << e.what() << endl;
+					cerr <<1 <<"	"<< variable << e.what() << endl;
 				}
 				//attribut dtype
 				NcType dtype = var.getType();
 				this_var.setDtype(dtype.getName());
-				// Data 
-				if (*variable != "input_station_id")
-				{
-					float *data = new float[ncFile.getDim("time").getSize()];
-					var.getVar(data);
-					varrayfloat vdata(data, ncFile.getDim("time").getSize());
-					this_var.setData(vdata);
-					delete[] data;
-				}
+				
 				// section for non - default netcdf attributes
-				if (*variable == "time")
+				if (variable == "time")
 				{
 					this_var.setCalendar(getAttribute<string>(var, "calendar"));
 					
@@ -466,37 +453,43 @@ namespace NETCDFUTILS
 				try{ this_var.setMdi( to_string(getAttribute<float>(var,"missing_value")) ); }
 				catch (NcException &e)
 				{
-					cerr << 2 << "	" << *variable << e.what() << endl;
-					if ((*variable) == "temperatures")
-						this_var.setMdi("-1e30");
-					else if ((*variable) == "input_station_id")
-						this_var.setMdi("null");
-					else if ((*variable) == "total_cloud_cover")
-						this_var.setMdi("-999");
+					cerr << 2 << "	" << variable << e.what() << endl;
+					if (variable == "temperatures")				this_var.setMdi("-1e30");
+					else if (variable == "input_station_id")	this_var.setMdi("null");
+					else if (variable == "total_cloud_cover")	this_var.setMdi("-999");
+				}
+				// Data 
+				if (variable != "input_station_id")
+				{
+					float *data = new float[ncFile.getDim("time").getSize()];
+					var.getVar(data);
+					CMaskedArray<float> vdata(ncFile.getDim("time").getSize(), data,Cast<float>(this_var.getMdi()));
+					this_var.setData(vdata);
+					delete[] data;
 				}
 				//Attribut valid_max
 				try{ this_var.setValidMax(to_string(getAttribute<float>(var,"valid_max"))); }
-				catch (NcException &e){ cerr << 3 << "	" << *variable << e.what() << endl; }
+				catch (NcException &e){ cerr << 3 << "	" << variable << e.what() << endl; }
 				//Attribut valid_min
 				try{
 					this_var.setValidMin(to_string(getAttribute<float>(var,"valid_min")));
 				}
-				catch (NcException& e){ cerr << 4 << "	" << *variable << e.what() << endl; }
+				catch (NcException& e){ cerr << 4 << "	" << variable << e.what() << endl; }
 				//Attribut standard_name
 				try{
 					this_var.setStandard_name(getAttribute<string>(var,"standard_name"));
 				}
-				catch (NcException& e){ cerr << 5 << "	" << *variable << e.what() << endl; }
+				catch (NcException& e){ cerr << 5 << "	" << variable << e.what() << endl; }
 				//Attribut coordinates
 				try{
 					this_var.setCoordinates(getAttribute<string>(var, "coordinates"));
 				}
-				catch (NcException& e){ cerr << 6 << "	" << *variable << e.what() << endl; }
+				catch (NcException& e){ cerr << 6 << "	" << variable << e.what() << endl; }
 				//Attribut cell_methods
 				try{
 					this_var.setCellmethods(getAttribute<string>(var, "cell_methods"));
 				}
-				catch (NcException& e){ cerr << 7 << "	" << *variable << e.what() << endl; }
+				catch (NcException& e){ cerr << 7 << "	" << variable << e.what() << endl; }
 				
 				try
 				{
@@ -505,21 +498,22 @@ namespace NETCDFUTILS
 				}
 				catch (NcException& e)
 				{
-					cerr << 8 << "	" << *variable << e.what() << endl;
-					if (*variable == "temperatures" || *variable == "dewpoints" || *variable == "slp" || *variable == "windspeeds")
+					cerr << 8 << "	" << variable << e.what() << endl;
+					if (variable == "temperatures" || variable == "dewpoints" || variable == "slp" || variable == "windspeeds")
 						this_var.setFdi (float(-2.e30));
 					else
 						this_var.setFdi(-888);
 				}
+				
+				this_var.setFlags(this_var.getData().size(),float(0));
 				//Ajouter la variable méteo à la liste des variables de la station stat
-				station.setMetVar(this_var, *variable);
+				station.setMetVar(this_var, variable);
 			}
 			
 			//read in the qc_flags array
 			if (read_qc_flags == true)
 			{
-				
-					
+									
 					NcVar qc_flags = ncFile.getVar("quality_control_flags");
 					if(qc_flags.isNull())
 						cout << "no QC flags available" << endl;
@@ -533,27 +527,37 @@ namespace NETCDFUTILS
 						qc_flags.getVar(qcflags);
 						for (size_t i = 0; i<ligne ; i++) 
 							delete[] qcflags[i];
-						delete[]qcflags;
+						delete []qcflags;
+						//Mettre qc_flags dans l'objet station
 					}
 			}
 
 			//read in the flagged_obs array
 			if (read_flagged_obs == true)
 			{
-				
+				valarray<varrayfloat> flagged_obs(process_var.size());
 				//Check if variable flagged_value exist in the netCDF file
 				if (ncFile.getVar("flagged_value").isNull())
-					cout << "no flagged obs available in netcdf file " << endl;
-				else // if doesn't exist, make an empty array 
 				{
-					size_t ligne = station.getMetvar("time").getData().size();
-					for (vector<string>::iterator var = process_var.begin(); var != process_var.end(); var++)
+					cout << "no flagged obs available in netcdf file " << endl;
+					// if doesn't exist, make an empty array 
+					
+					int v = 0;
+					for (string var : process_var)
 					{
-						varrayfloat flaggedobs(static_cast<float>(atoi(station.getMetvar(*var).getMdi().c_str())), ligne);
-						//push array into relevant attribute
-						station.getMetvar(*var).setFlagged_obs(flaggedobs);
+						CMetVar& st_var = station.getMetvar(var);
+						varrayfloat dummy(Cast<float>(st_var.getMdi()), station.getMetvar("time").getAllData().size());
+						flagged_obs[v] = dummy;
+						v++;
 					}
 				}
+				int v = 0;
+				for (string var : process_var)
+				{
+					CMetVar& st_var = station.getMetvar(var);
+					st_var.setFlagged_obs(flagged_obs[v]);		
+					v++;
+				}	
 			}
 
 			//read in reporting statistics - just to carry through

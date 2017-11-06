@@ -1,10 +1,10 @@
 #include "records.h"
-#include "utils.h"
-#include "python_function.h"
+
 
 
 using namespace std;
-
+using namespace UTILS;
+using namespace PYTHON_FUNCTION;
 
 namespace INTERNAL_CHECKS
 {
@@ -64,7 +64,7 @@ namespace INTERNAL_CHECKS
 		return region;
 }
 	
-	void krc_set_flags(varraysize locs, CStation& station, int col)
+	void krc_set_flags(varraysize& locs, CStation& station, int col)
 	{
 		if (locs.size() > 0)
 			station.setQc_flags(float(1), locs, col);
@@ -72,9 +72,10 @@ namespace INTERNAL_CHECKS
 
 	void krc(CStation& station, std::vector<std::string> var_list, std::vector<int>flag_col,std::ofstream &logfile)
 	{
+		//Mettre à jour les records mondiaux
 		std::map< std::string, float> T_X, T_N, D_X, D_N, W_X, W_N, S_X, S_N;
 		string reg[8] = { "Africa", "Asia", "South_America", "North_America", "Europe", "Pacific", "Antarctica", "ROW" };
-		float record[8] = { 55.0, 53.9, 48.9, 56.7, 48.0, 50.7, 15.0, 56.7 };
+		float record[8] =  { 55.0, 53.9, 48.9, 56.7, 48.0, 50.7, 15.0, 56.7 };
 		float record1[8] = { -23.9, -67.8, -32.8, -63.0, -58.1, -23.0, -89.2, -89.2 };
 		float record2[8] = { 55.0, 53.9, 48.9, 56.7, 48.0, 50.7, 15.0, 56.7 };
 		float record3[8] = { -50., -100., -60., -100., -100., -50., -100., -100. };
@@ -112,12 +113,12 @@ namespace INTERNAL_CHECKS
 			CMetVar& st_var = station.getMetvar(variable);
 			string st_region = krc_get_wmo_region(station.getWmoId());
 			CMaskedArray<float> all_filtered = UTILS::apply_filter_flags(st_var);
-			varraysize too_high = PYTHON_FUNCTION::npwhere<float>(all_filtered.m_data, maxes[variable][st_region], ">");
+			varraysize too_high = npwhere<float>(all_filtered.m_data, ">", maxes[variable][st_region]);
 			krc_set_flags(too_high, station, flag_col[v]);
-			//make sure that don"t flag the missing values!
-			varraysize too_low = PYTHON_FUNCTION::npwhere(all_filtered, mins[variable][st_region], '<');
+			//make sure that don't flag the missing values!
+			varraysize too_low = npwhere(all_filtered, '<', mins[variable][st_region]);
 			krc_set_flags(too_low, station, flag_col[v]);
-			varraysize flag_locs = PYTHON_FUNCTION::npwhere<float>(station.getQc_flags()[flag_col[v]], float(0), "!");
+			varraysize flag_locs = npwhere<float>(station.getQc_flags()[flag_col[v]], "!", float(0));
 			UTILS::print_flagged_obs_number(logfile, "World Record", variable, flag_locs.size());
 			st_var.setFlags(flag_locs, float(1));
 			v++;

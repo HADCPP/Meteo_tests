@@ -1,13 +1,13 @@
-duplicate    ousmane
-odd  		 ousmane
-frequent  	 ousmane
-diurnal  	 ousmane
+duplicate    ousmane   f
+odd  		 ousmane  f
+frequent  	 ousmane  f
+diurnal  	 ousmane  f
 gap          Ousmane--Remi  
-records   ousmane
-streaks  ousmane
+records   ousmane f
+streaks  ousmane  f
 climatological ous... (terminer après les autres tests) 
-spike  ousmane
-humidity  ousman
+spike  ousmane  f
+humidity  ousman  f
 cloud  ousmane
 variance  ousmane
 winds  

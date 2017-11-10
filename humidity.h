@@ -34,7 +34,7 @@ namespace INTERNAL_CHECKS
 
 		: returns : flags - locations where flags have been set
 	*/
-	void hcc_sss(varrayfloat& T, varrayfloat& D, std::map<int, int> month_ranges, std::ofstream& logfile, varrayfloat& flags);
+	void hcc_sss(varrayfloat& T, varrayfloat& D, std::vector<std::pair<int, int>> month_ranges, std::ofstream& logfile, varrayfloat& flags);
 		
 	/*
 	Dew point Depression check.  If long string of DPD = 0, then flag
@@ -50,7 +50,7 @@ namespace INTERNAL_CHECKS
     :param bool plots: do plots or not
     :param bool diagnostics: extra verbose output
 */
-	varrayfloat  hcc_dpd(varrayInt& times, CMaskedArray<float>& T, CMaskedArray<float>& D, CMaskedArray<float>& P, CMaskedArray<float>& C, CMaskedArray<float>& SX, std::ofstream& logfile);
+	varrayfloat  hcc_dpd(varrayfloat& times, CMaskedArray<float>& T, CMaskedArray<float>& D, CMaskedArray<float>& P, CMaskedArray<float>& C, CMaskedArray<float>& SX, std::ofstream& logfile);
 	/*
 	Check each month to see if most T obs have corresponding D obs
     do in bins of 10C - if one bin has <50% of match, then remove month
@@ -62,7 +62,7 @@ namespace INTERNAL_CHECKS
         :returns: flags - locations where flags have been set
 	*/
 
-	varrayfloat hcc_cutoffs(CMaskedArray<float>& T, CMaskedArray<float>& D, std::map<int, int> month_ranges, std::ofstream& logfile);
+	varrayfloat hcc_cutoffs(CMaskedArray<float>& T, CMaskedArray<float>& D, std::vector<std::pair<int, int>> month_ranges, std::ofstream& logfile);
 	
 
 	/*
@@ -76,6 +76,6 @@ namespace INTERNAL_CHECKS
   
 
 	*/
-		void hcc(CStation &station, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile);
+		void hcc(CStation& station, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile);
 
 }

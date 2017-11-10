@@ -44,50 +44,62 @@ namespace INTERNAL_CHECKS
 
 			full_time_diffs.m_mask = all_filtered.m_mask;
 			full_time_diffs.m_masked_indices = all_filtered.m_masked_indices;
-
 			varrayfloat time_data = station.getMetvar("time").getData();
 
-			varrayfloat dummy(good.size());
-			time_data = time_data[good];
-			dummy[good] = time_data[std::slice(1, good.size() - 1, 1)];
-			dummy[good] -= time_data[std::slice(0, good.size() - 1, 1)];
-			dummy[good[good.size() - 1]] = dummy[good[0]];
-			full_time_diffs.m_data[good] = dummy;
+			varrayfloat dummy(full_time_diffs.size());
+			varraysize indices(good.size());
+			for (size_t i = 0; i < indices.size()-1; i++)
+			{
+				indices[i] = good[i+1];
+			}
+			dummy = time_data[good];
+			
+			full_time_diffs.fill(good, dummy[std::slice(1, good.size() - 1, 1)]);
+			time_data.resize(dummy.size(), 0);
+			time_data -= dummy[std::slice(0, good.size() - 1, 1)];
+			full_time_diffs.add(good, time_data);
+			full_time_diffs.m_data[good[good.size() - 1]] = full_time_diffs.m_data[good[0]];
+			
 
 			//develop critical values using clean values
 			cout << "sort the differencing if values were flagged rather than missing" << endl;
 
 			CMaskedArray<float> full_filtered_diffs(float(0), all_filtered.size());
 			full_filtered_diffs.m_mask = all_filtered.m_mask;
+			full_filtered_diffs.m_masked_indices = all_filtered.m_masked_indices;
 
-			varrayfloat dumm(good.size());
-			dumm[good] = all_filtered.compressed()[std::slice(1, all_filtered.compressed().size() - 1, 1)];
-			dumm[good] -= all_filtered.compressed()[std::slice(0, all_filtered.compressed().size() - 1, 1)];
-
-			if (all_filtered.compressed().size() != good.size()) dumm[good.size() - 1] = dumm[good[0]];
-			full_filtered_diffs.m_data[good] = dumm;
-
+			full_filtered_diffs.fill(good,all_filtered.compressed()[std::slice(1, all_filtered.compressed().size() - 1, 1)]);
+			dummy.resize(good.size(), 0);
+			dummy -= all_filtered.compressed()[std::slice(0, all_filtered.compressed().size() - 1, 1)];
+			full_filtered_diffs.add(good, dummy);
+			full_filtered_diffs.m_data[good[good.size() - 1]] = full_filtered_diffs.m_data[good[0]];
+			
 			//test all values
 			varraysize good_to_uncompress = npwhere(st_var.getAllData().m_mask, "=", false);
 
 			CMaskedArray<float> full_value_diffs(float(0), st_var.getData().size());
 			full_value_diffs.m_mask = st_var.getAllData().m_mask;
+			full_value_diffs.m_masked_indices = st_var.getAllData().m_masked_indices;
 
-			size_t taille = st_var.getAllData().compressed().size();
-			dumm.resize(taille);
-			dumm[good_to_uncompress] = st_var.getAllData().compressed()[std::slice(1, taille - 1, 1)];
-			dumm[good_to_uncompress] -= st_var.getAllData().compressed()[std::slice(0, taille - 1, 1)];
+			full_value_diffs.fill(good_to_uncompress, st_var.getAllData().compressed()[std::slice(1, st_var.getAllData().compressed().size() - 1, 1)]);
 
+			dummy.resize(good_to_uncompress.size(), 0);
+
+			dummy -= st_var.getAllData().compressed()[std::slice(0, st_var.getAllData().compressed().size() - 1, 1)];
+			full_value_diffs.add(good_to_uncompress, dummy);
+			full_value_diffs.m_data[good_to_uncompress[good_to_uncompress.size() - 1]] = full_value_diffs.m_data[good_to_uncompress[0]];
+
+			
 			// convert to compressed time to match IDL
 
 			varrayfloat value_diffs = full_value_diffs.compressed();
 			varrayfloat time_diffs = full_time_diffs.compressed();
 			varrayfloat filtered_diffs = full_filtered_diffs.compressed();
 
-			flags = flags[good_to_uncompress];
-
+			dummy = flags[good_to_uncompress];
+			flags = dummy;
 			matrix<float> critical_values(9, 12);
-
+			/*  Initialisationd de critical_values*/
 			for (size_t i = 0; i < critical_values.size1(); ++i)
 			{
 				for (size_t j = 0; j < critical_values.size2(); ++j)
@@ -103,7 +115,7 @@ namespace INTERNAL_CHECKS
 			CMaskedArray<float> this_month_filtered_diff(full_filtered_diffs.size());
 			for (size_t month = 0; month < 12; month++)
 			{
-				for (size_t year = 0; year < int(month_ranges.size() / 12); month++)
+				for (size_t year = 0; year < int(month_ranges.size() / 12); year++)
 				{
 					if (year == 0)
 					{
@@ -123,33 +135,32 @@ namespace INTERNAL_CHECKS
 						month_ranges_years[month][year].second - month_ranges_years[month][year].first, 1)] = month;
 
 				}
-				for (size_t delta = 1; month < 9; delta++)
+				for (size_t delta = 1; delta < 9; delta++)
 				{
 					float iqr;
 					varraysize locs = ma_masked_where(this_month_time_diff, "=", float(delta));
 					if (locs.size() >= 100)
 					{
-						dumm.resize(locs.size());
-						dumm = this_month_filtered_diff.m_data[locs];
-						iqr = IQR(dumm);
+						dummy = this_month_filtered_diff.m_data[locs];
+						iqr = IQR(dummy);
 						if (iqr == float(0) && delta == 1)
 							critical_values(delta - 1, month) = float(6);
 						else if (iqr == float(0))
 							critical_values(delta - 1, month) = Cast<float>(st_var.getMdi());
 						else
+						{
 							critical_values(delta - 1, month) = 6 * iqr;
-
-
-
-						float threshold = get_critical_values<float>(dumm, float(0), 0.5, critical_values(delta - 1, month));
+						}
+						
+						float threshold = get_critical_values<float>(dummy, float(0), 0.5, critical_values(delta - 1, month));
 						if (threshold < critical_values(delta - 1, month)) critical_values(delta - 1, month) = threshold;
 
 						cout << critical_values(delta - 1, month) << "   " << iqr << "  " << 6 * iqr << endl;
 					}
 				}
 			}
-			month_locs = month_locs[good_to_uncompress];
-
+			 dummy= month_locs[good_to_uncompress];
+			 month_locs = dummy;
 			//not less than 5x reporting accuracy
 			for (size_t i = 0; i < critical_values.size1(); ++i)
 			{
@@ -166,7 +177,7 @@ namespace INTERNAL_CHECKS
 					}
 				}
 			}
-
+			
 			//check hourly against 2 hourly, if <2/3 the increase to avoid crazy rejection rate
 			for(int month = 0; month < 12; month++)
 			{
@@ -178,17 +189,23 @@ namespace INTERNAL_CHECKS
 					}
 				}
 			}
+			
 			//get time differences for unfiltered data
 			full_time_diffs.resize(st_var.getData().size());
 
 			full_time_diffs.m_mask=st_var.getAllData().m_mask;
-			time_data = station.getMetvar("time").getData()[good_to_uncompress];
+			full_time_diffs.m_masked_indices = st_var.getAllData().m_masked_indices;
+			time_data.resize(station.getMetvar("time").getData().size(),0);
+			time_data = station.getMetvar("time").getData();
 			
-			dummy[good_to_uncompress] = time_data[std::slice(1, good.size() - 1, 1)];
-			dummy[good_to_uncompress] -= time_data[std::slice(0, good.size() - 1, 1)];
-			dummy[good_to_uncompress[good_to_uncompress.size() - 1]] = dummy[good_to_uncompress[0]];
 
-			full_time_diffs.fill(good_to_uncompress,dummy);
+			full_time_diffs.fillData(good_to_uncompress, time_data[std::slice(1, time_data.size() - 1, 1)]);
+
+			dummy.resize(good_to_uncompress.size(), 0);
+
+			dummy -= time_data[std::slice(0, time_data.size() - 1, 1)];
+			full_time_diffs.addData(good_to_uncompress, dummy);
+			full_time_diffs.m_data[good_to_uncompress[good_to_uncompress.size() - 1]] = full_time_diffs.m_data[good_to_uncompress[0]];
 			
 			time_diffs = full_time_diffs.compressed();
 
@@ -196,11 +213,13 @@ namespace INTERNAL_CHECKS
 
 			// spikes at the beginning or ends of sections
 
-			size_t size = Arange<int>(time_diffs.size(), 0, 1).size();
-			for (size_t t = 0; t < size; ++t)
+			for (size_t t = 0; t < time_diffs.size(); t++)
 			{
 				float median_diff;
-				if (std::abs(time_diffs[t - 1]) > 240 && std::abs(time_diffs[t]) < 3)
+				int j;
+				(t < 1) j = time_diffs.size() - 1 : j = t - 1;
+
+				if (std::abs(time_diffs[j]) > 240 && std::abs(time_diffs[t]) < 3)
 				{
 					//10 days before but short gap thereafter
 
@@ -233,11 +252,11 @@ namespace INTERNAL_CHECKS
 						}
 					}
 				}
-				else if (std::abs(time_diffs[t - 1]) < 3 && std::abs(time_diffs[t]) > 240)
+				else if (std::abs(time_diffs[j]) < 3 && std::abs(time_diffs[t]) > 240)
 				{
 					//10 days after but short gap before
 
-					varraysize indice = good_to_uncompress[std::slice(0, t -1, 1)];
+					varraysize indice = good_to_uncompress[std::slice(0, j, 1)];
 
 					CMaskedArray<float> prev_values = st_var.getAllData()[indice];
 
@@ -253,23 +272,22 @@ namespace INTERNAL_CHECKS
 
 					float prev_median = idl_median(prev_values[indice].compressed());
 
-					float prev_diff = std::abs(value_diffs[t-1]); 
+					float prev_diff = std::abs(value_diffs[j]); 
 
 					median_diff = std::abs(prev_median - st_var.getAllData().m_data[good_to_uncompress[t]]);
 
-					if (critical_values(time_diffs[t-1] - 1, month_locs[t]) != Cast<float>(st_var.getMdi()))
+					if (critical_values(time_diffs[j] - 1, month_locs[t]) != Cast<float>(st_var.getMdi()))
 					{
 						//jump from spike > critical but average before< critical / 2
-						if (std::abs(median_diff) < critical_values(time_diffs[t-1] - 1, month_locs[t])/2. &&
+						if (std::abs(median_diff) < critical_values(time_diffs[j] - 1, month_locs[t])/2. &&
 							std::abs(prev_diff) > critical_values(time_diffs[t] - 1, month_locs[t]))
 						{
 							flags[t] = 1;
 						}
 					}
 				}
-			}
-			size = Arange<int>(time_diffs.size(), 0, 1).size();
-			for (size_t t = 0; t < size; ++t)
+			}			
+			for (size_t t = 0; t < time_diffs.size(); ++t)
 			{
 				for (int spk_len : {1, 2, 3})
 				{
@@ -317,7 +335,7 @@ namespace INTERNAL_CHECKS
 														if (std::abs(value_diffs[t + 1]) <= critical_values(time_diffs[t + 1] - 1, month_locs[t]) / 2.)
 														{
 															//set the flags
-															flags[std::slice(t - spk_len + 1, t + 1 - t - spk_len + 1, 1)] = 1;
+															flags[std::slice(t - spk_len + 1, spk_len , 1)] = 1;
 
 														}
 													}

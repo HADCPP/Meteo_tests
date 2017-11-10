@@ -9,17 +9,17 @@ using namespace boost::numeric::ublas;
 namespace INTERNAL_CHECKS
 {
 
-	void hcc_sss(varrayfloat & T, varrayfloat& D, std::map<int, int> month_ranges, std::ofstream& logfile, varrayfloat& flags)
+	void hcc_sss(varrayfloat & T, varrayfloat& D, std::vector<pair<int, int>> month_ranges, std::ofstream& logfile, varrayfloat& flags)
 	{
 		
 		//flag each location where D > T
 
 		
-		map<int, int>::iterator month;
-		for (month = month_ranges.begin(); month != month_ranges.end(); month++)
+		
+		for (pair<int,int> month : month_ranges)
 		{
 			float data_count = 0, sss_count = 0;
-			for (size_t t = 0; t < Arange<int>(month->second, month->second - month->first, 1).size(); ++t)
+			for (size_t t = month.first; t < month.second; t++)
 			{
 				data_count += 1;
 				if (D[t] > T[t])
@@ -30,24 +30,24 @@ namespace INTERNAL_CHECKS
 			}
 			//test whole month
 			// if more than 20% flagged, flag whole month
-			if (sss_count / data_count >= SSS_MONTH_FRACTION)
-				flags[std::slice(month->second, month->second - month->first, 1)] = 1;
+			if (sss_count/data_count >= SSS_MONTH_FRACTION)
+				flags[std::slice(month.first, month.second - month.first, 1)] = 1;
 		}
-		size_t nflags = npwhere(flags, float(0), "!").size();
+		size_t nflags = npwhere(flags, "!", float(0)).size();
 		print_flagged_obs_number(logfile, "Supersaturation", "temperature", nflags);
 		
 	}
 
-	varrayfloat hcc_dpd(varrayInt& times, CMaskedArray<float>& T, CMaskedArray<float>& D, CMaskedArray<float>& P, CMaskedArray<float>& C, CMaskedArray<float>& SX, std::ofstream& logfile)
+	varrayfloat hcc_dpd(varrayfloat& times, CMaskedArray<float>& T, CMaskedArray<float>& D, CMaskedArray<float>& P, CMaskedArray<float>& C, CMaskedArray<float>& SX, std::ofstream& logfile)
 	{
 
 		varrayfloat flags(float(0),T.size());
 		CMaskedArray<float> dpds = T - D;
 		float last_dpds = -9999;
-		int  string_start_time = times[0];
+		float string_start_time = times[0];
 		int start_loc = 0;
 		int t = 0;
-		for (int tt : times)
+		for (float tt : times)
 		{
 			if (tt > 0 && tt < times[times.size() - 1])
 			{
@@ -57,11 +57,13 @@ namespace INTERNAL_CHECKS
 					if (dpds[t] != last_dpds)
 					{
 						// if long enough
-						if (times[t - 1] - string_start_time >= 24)
+						int j;
+						(t < 1) ? j = times.size() - 1: j = t-1;
+						if (times[j] - string_start_time >= 24)
 						{
 							float abs_diff;
 							CMaskedArray<float> these_dpds = dpds(start_loc, t);
-							varraysize good = npwhere(these_dpds.m_mask, false, "=");
+							varraysize good = npwhere(these_dpds.m_mask, "=", false);
 							if (T[t] >= 0)
 								abs_diff = 0.25;
 							else
@@ -102,26 +104,26 @@ namespace INTERNAL_CHECKS
 			}
 			t++;
 		}	
-		size_t nflags = npwhere(flags, float(0), "!").size();
+		size_t nflags = npwhere(flags,"!", float(0) ).size();
 		print_flagged_obs_number(logfile, "Dewpoint Depression", "temperature", nflags);
 		return flags;
 	}
 
-	varrayfloat hcc_cutoffs(CMaskedArray<float>& T, CMaskedArray<float>& D, std::map<int, int> month_ranges, std::ofstream& logfile)
+	varrayfloat hcc_cutoffs(CMaskedArray<float>& T, CMaskedArray<float>& D, std::vector<pair<int, int>> month_ranges, std::ofstream& logfile)
 	{
 		varrayfloat flags(float(0), T.size());
 
 		int binwidth = 10;
 		varraysize bins = Arange(70, 7 - 90, binwidth);
 		int m = 0;
-		map<int, int>::iterator month ;
-		for (month = month_ranges.begin(); month != month_ranges.end(); month++)
+		
+		for (pair<int,int> month : month_ranges)
 		{
-			CMaskedArray<float> this_month_T = T(month->first, month->second);
-			CMaskedArray<float> this_month_D = D(month->first, month->second);
+			CMaskedArray<float> this_month_T = T(month.first, month.second);
+			CMaskedArray<float> this_month_D = D(month.first, month.second);
 
-			varraysize goodT = npwhere(this_month_T.m_mask, false, "=");
-			varraysize goodD = npwhere(this_month_D.m_mask, false, "=");
+			varraysize goodT = npwhere(this_month_T.m_mask, "=", false);
+			varraysize goodD = npwhere(this_month_D.m_mask, "=", false);
 
 			//check if more than 112 obs(4 / d * 28 d)
 			if (goodT.size() > 112)
@@ -138,12 +140,12 @@ namespace INTERNAL_CHECKS
 						CMaskedArray<float> binD = this_month_D[bin_locs];
 
 						// find good temperatures
-						varraysize good_binT = npwhere(binT.m_mask, false, "=");
-						varraysize good_binD = npwhere(binD.m_mask, false, "=");
+						varraysize good_binT = npwhere(binT.m_mask, "=", false);
+						varraysize good_binD = npwhere(binD.m_mask, "=", false);
 							
 						//and the bad dewpoints coincident with the good temperatures
 						valarray<bool> dummy = binD.m_mask[good_binT];
-						varraysize bad_binD_T = npwhere(dummy, false, "=");
+						varraysize bad_binD_T = npwhere(dummy, "=", false);
 
 						if (bad_binD_T.size() != 0)
 						{
@@ -176,7 +178,7 @@ namespace INTERNAL_CHECKS
 			}
 			m++;
 		}
-		size_t nflags = npwhere(flags, float(0), "!").size();
+		size_t nflags = npwhere(flags, "!", float(0)).size();
 		print_flagged_obs_number(logfile, "Dewpoint Cut-off", "temperature", nflags);
 
 		return flags;
@@ -184,9 +186,9 @@ namespace INTERNAL_CHECKS
 
 	void hcc(CStation &station, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile)
 	{
-		CMetVar temperatures = station.getMetvar("temperatures");
-		CMetVar dewpoints = station.getMetvar("dewpoints");
-		map<int, int> month_ranges = month_starts_in_pairs(start, end);
+		CMetVar& temperatures = station.getMetvar("temperatures");
+		CMetVar& dewpoints = station.getMetvar("dewpoints");
+		std::vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
 
 		//Supersaturation
 
@@ -196,22 +198,23 @@ namespace INTERNAL_CHECKS
 
 		//Dew point depression
 		
-		CMetVar precip = station.getMetvar("precip1_depth");
-		CMetVar cloudbase = station.getMetvar("cloud_base");
-		CMetVar past_sigwx = station.getMetvar("past_sigwx1");
+		CMetVar& precip = station.getMetvar("precip1_depth");
+		CMetVar& cloudbase = station.getMetvar("cloud_base");
+		CMetVar& past_sigwx = station.getMetvar("past_sigwx1");
 		
-		varrayInt times(station.getTime_data().size());
-		std::copy(station.getTime_data().begin(), station.getTime_data().end(), std::begin(times));
+		varrayfloat times=station.getMetvar("time").getData();
+		
 		flags.resize(temperatures.getAllData().size());
 		flags = hcc_dpd(times, temperatures.getAllData(), dewpoints.getAllData(), precip.getAllData(), cloudbase.getAllData(), past_sigwx.getAllData(), logfile);
 		station.setQc_flags(flags, flag_col[1]);
 	
 		//Dew point cutoffs
-
+		flags = hcc_cutoffs(temperatures.getAllData(), dewpoints.getAllData(), month_ranges, logfile);
+		station.setQc_flags(flags, flag_col[2]);
 		
 		for (size_t col : {0, 1, 2})
 		{
-			varraysize flag_locs = npwhere(station.getQc_flags(flag_col[col]), float(0), "!");
+			varraysize flag_locs = npwhere(station.getQc_flags(flag_col[col]), "!", float(0));
 			dewpoints.setFlags(flag_locs, float(1));
 		}
 		append_history(station, "Temperature-Humidity Cross Check");

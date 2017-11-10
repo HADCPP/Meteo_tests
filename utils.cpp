@@ -84,8 +84,8 @@ namespace UTILS
 	{
 		//expand the time axis of the variables
 		boost::gregorian::date_duration DaysBetween = end - start;
-		valarray < float > fulltimes;
-		
+		valarray < float > fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24,0);
+				
 		//adjust if input netCDF file has different start date to desired
 		string time_units = station.getTime_units();
 		//Extraire la date de la chaîne
@@ -95,7 +95,8 @@ namespace UTILS
 		boost::gregorian::date  netcdf_start = boost::gregorian::date_from_iso_string(time_units);
 		boost::gregorian::date_duration offset = start- netcdf_start;
 		
-		fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24, offset.days() * 24);
+		fulltimes += offset.days()*24;
+		
 
 		valarray<bool> match, match_reverse;
 
@@ -169,7 +170,8 @@ namespace UTILS
 		}
 
 		//working in fulltimes throughout and filter by missing
-		if (offset.days() != 0)	fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24, offset.days() * 24);
+		if (offset.days() != 0)	fulltimes = PYTHON_FUNCTION::arange<float>(DaysBetween.days() * 24, 0);
+
 		station.getMetvar("time").setData(fulltimes);
 		
 		return match;
@@ -203,7 +205,7 @@ namespace UTILS
 	}
 	 void print_flagged_obs_number(std::ofstream& logfile, string test, string variable, int nflags)
 	{
-		logfile << test<< "  Check Flags :  "<< variable  <<" :  "<< nflags;
+		logfile << test << "     Check Flags  :     " << variable << "    :    " << nflags << endl;
 	}
 	/*
 	Apply these flags to all variables
@@ -338,29 +340,52 @@ namespace UTILS
 		for (int i = 0; i < bins.size() - 1; i++)
 				bincenters[i] = 0.5*(bins[i] + bins[i+1]);
 
+	}
+	/* create bins and bin centres from data given bin width covers entire range */
+
+	void create_bins(std::valarray<CMaskedArray<float>>& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters)
+	{
+		
+		//Search min and min of the matrice
+		varrayfloat Min(indata.size());
+		varrayfloat Max(indata.size());
+
+		for (size_t i = 0; i < indata.size(); i++)
+		{
+			Min[i] = indata[i].compressed().min();
+			Max[i] = indata[i].compressed().min();
+		}
+
+		int bmins = int(floor(Min.min()));
+		int bmax = int(ceil(Max.max()));
+		//set up the bins
+		bins = PYTHON_FUNCTION::arange<float>(bmax + (3. * binwidth), bmins - binwidth, binwidth);
+		bincenters.resize(bins.size());
+		for (int i = 0; i < bins.size() - 1; i++)
+			bincenters[i] = 0.5*(bins[i] + bins[i + 1]);
 
 	}
-	
 	//Sum up a single month across all years(e.g.all Januaries)
 	//return this_month, year_ids, datacount
 
-	void  concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, varrayfloat& data, std::vector<CMaskedArray<float>>& this_month,
-		std::vector<int>& year_ids, varrayfloat& datacount, float missing_value, bool hours)
+	std::valarray<int>  concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, CMaskedArray<float>& data, std::vector<CMaskedArray<float>>& this_month,
+		std::vector<int>& year_ids, float missing_value, bool hours)
 	{
 
-		
+		valarray<int> datacount(month_ranges.size());
 		for (size_t y = 0; y < month_ranges.size();y++)
 		{
 
-			varrayfloat dummy = data[slice(month_ranges[y].first, month_ranges[y].second - month_ranges[y].first + 1, 1)];
-			CMaskedArray<float> this_year = CMaskedArray<float>::CMaskedArray(missing_value, dummy);
+			
+			CMaskedArray<float> this_year = data(month_ranges[y].first, month_ranges[y].second);
+			this_year.masked(data.m_fill_value);
 			datacount[y] = this_year.compressed().size();
 
 			if (y == 0)
 			{
 				//store so can access each hour of day separately
 				if (hours)
-					this_month = L_reshape(this_year, 24);
+					this_month = C_reshape(this_year, 24);
 				else
 					this_month.push_back(this_year);
 				for (int i = 0; i < this_month.size(); ++i)
@@ -370,16 +395,17 @@ namespace UTILS
 			{
 				if (hours)
 				{
-					std::vector<CMaskedArray<float>> t_years = L_reshape(this_year, 24);
+					std::vector<CMaskedArray<float>> t_years = C_reshape(this_year, 24);
 					std::copy(t_years.begin(), t_years.end(), std::back_inserter(this_month));
 				}
 				else
 					this_month.push_back(this_year);
-				for (int i = 0; i < this_month.size(); ++i)
+				for (int i = 0; i < int(this_year.size()/24); ++i)
 					year_ids.push_back(y);
 			}
 			
 		}
+		return datacount;
 	}
 
 	//''' Calculate the percentile of data '''

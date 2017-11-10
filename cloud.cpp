@@ -17,11 +17,11 @@ namespace INTERNAL_CHECKS
 		int c = 0;
 		for (string cloud : { "total_cloud_cover", "low_cloud_cover", "mid_cloud_cover", "high_cloud_cover" })
 		{
-			CMetVar cloud_obs = station.getMetvar("cloud");
+			CMetVar& cloud_obs = station.getMetvar(cloud);
 			varraysize bad_locs = npwhereOr(cloud_obs.getData(), float(9), float(10), "=", "=");
 
 			station.setQc_flags(float(1), bad_locs, flag_col[c]);
-			varraysize flag_locs = npwhere(station.getQc_flags(flag_col[c]), float(1), "=");
+			varraysize flag_locs = npwhere(station.getQc_flags(flag_col[c]), "=", float(1));
 			print_flagged_obs_number(logfile, "Unobservable cloud", cloud, flag_locs.size());
 			//copy flags into attribute
 			cloud_obs.setFlags(flag_locs, float(1));
@@ -31,19 +31,22 @@ namespace INTERNAL_CHECKS
 	}
 	void total_lt_max(CStation& station, int flag_col, std::ofstream& logfile)
 	{
-		CMetVar total = station.getMetvar("total_cloud_cover");
-		CMetVar low = station.getMetvar("low_cloud_cover");
-		CMetVar mid = station.getMetvar("mid_cloud_cover");
-		CMetVar high = station.getMetvar("high_cloud_cover");
+		CMetVar& total = station.getMetvar("total_cloud_cover");
+		CMetVar& low = station.getMetvar("low_cloud_cover");
+		CMetVar& mid = station.getMetvar("mid_cloud_cover");
+		CMetVar& high = station.getMetvar("high_cloud_cover");
 
-		float maximum = low.getData().max();
-		if (maximum > mid.getData().max()) maximum = mid.getData().max();
-		else if (maximum > high.getData().max()) maximum = mid.getData().max();
-
-		varraysize bad_locs = npwhere(total.getData(), maximum ,"<");
+		varrayfloat maximum=low.getData();
+		for (size_t i = 0; i < maximum.size(); i++)
+		{
+			if (maximum[i] < mid.getData()[i]) maximum[i] = mid.getData()[i];
+			if (maximum[i] < high.getData()[i]) maximum[i] = high.getData()[i];
+		}
+	
+		varraysize bad_locs = npwhere(total.getData(), "<", maximum);
 
 		station.setQc_flags(float(1), bad_locs, flag_col);
-		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), float(0), "!");
+		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), "!", float(0));
 
 		print_flagged_obs_number(logfile, "Total < Max cloud", "cloud", flag_locs.size());
 		//copy flags into attribute
@@ -56,26 +59,23 @@ namespace INTERNAL_CHECKS
 	}
 	void low_full(CStation& station, int flag_col, std::ofstream& logfile)
 	{
-		CMetVar low = station.getMetvar("low_cloud_cover");
-		CMetVar mid = station.getMetvar("mid_cloud_cover");
-		CMetVar high = station.getMetvar("high_cloud_cover");
+		CMetVar& low = station.getMetvar("low_cloud_cover");
+		CMetVar& mid = station.getMetvar("mid_cloud_cover");
+		CMetVar& high = station.getMetvar("high_cloud_cover");
 
-		varraysize low_full_locs = npwhere(low.getAllData(), float(8), '=');
+		varraysize low_full_locs = npwhere(low.getAllData(), '=', float(8));
 
 		valarray<bool> dummy = mid.getAllData().m_mask[low_full_locs];
-		varraysize	bad_mid = npwhere(dummy, true, "!");
+		varraysize	bad_mid = npwhere(dummy, "!", true);
 		
-		low_full_locs = low_full_locs[bad_mid];
-
-		station.setQc_flags(float(1), low_full_locs, flag_col);
+		station.setQc_flags(float(1), low_full_locs[bad_mid], flag_col);
 
 		dummy.resize(mid.getAllData().m_mask.size());
 		dummy = high.getAllData().m_mask[low_full_locs];
-		varraysize	bad_high = npwhere(dummy, true, "!");
-		low_full_locs = low_full_locs[bad_high];
-		station.setQc_flags(float(1), low_full_locs, flag_col);
-		dummy.free();
-		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), float(0), "!");
+		varraysize	bad_high = npwhere(dummy, "!", true);
+		station.setQc_flags(float(1), low_full_locs[bad_high], flag_col);
+		
+		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), "!", float(0));
 		print_flagged_obs_number(logfile, "Low full cloud", "cloud", flag_locs.size());
 
 		//copy flags into attribute
@@ -85,32 +85,30 @@ namespace INTERNAL_CHECKS
 
 	void mid_full(CStation& station, int flag_col, std::ofstream& logfile)
 	{
-		CMetVar mid = station.getMetvar("mid_cloud_cover");
-		CMetVar high = station.getMetvar("high_cloud_cover");
+		CMetVar& mid = station.getMetvar("mid_cloud_cover");
+		CMetVar& high = station.getMetvar("high_cloud_cover");
 
-		varraysize mid_full_locs = npwhere(mid.getAllData(), float(8), '=');
+		varraysize mid_full_locs = npwhere(mid.getAllData(), '=', float(8));
 
 		valarray<bool> dummy = high.getAllData().m_mask[mid_full_locs];
-		varraysize	bad_high = npwhere(dummy, true, "!");
-		/*dummy.free();*/
-		mid_full_locs = mid_full_locs[bad_high];
 
-		station.setQc_flags(float(1), mid_full_locs, flag_col);
-
+		varraysize bad_high = npwhere(dummy, "!", true);
 		
+		station.setQc_flags(float(1), mid_full_locs[bad_high], flag_col);
 
-		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), float(0), "!");
+
+		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), "!", float(0));
 		print_flagged_obs_number(logfile, "Mid full cloud", "cloud", flag_locs.size());
 
 		//copy flags into attribute
 		high.setFlags(flag_locs, float(1));
 	}
 
-	void fix_cloud_base(CStation station)
+	void fix_cloud_base(CStation& station)
 	{
-		CMetVar cloud_base = station.getMetvar("cloud_base");
+		CMetVar& cloud_base = station.getMetvar("cloud_base");
 
-		varraysize bad_cb = npwhere(cloud_base.getAllData(), float(22000), '=');
+		varraysize bad_cb = npwhere(cloud_base.getAllData(), '=', float(22000));
 
 		//no flag set on purpose - just set to missing (unobservable)
 
@@ -124,8 +122,8 @@ namespace INTERNAL_CHECKS
 		for (string cloud : { "total_cloud_cover", "low_cloud_cover", "mid_cloud_cover", "high_cloud_cover" })
 		{
 
-			CMetVar cloud_obs = station.getMetvar("cloud");
-			varraysize bad_locs = npwhere(cloud_obs.getAllData(), float(0), '<');
+			CMetVar& cloud_obs = station.getMetvar(cloud);
+			varraysize bad_locs = ma_masked_where(cloud_obs.getAllData(), "<", float(0));
 
 			station.setQc_flags(float(1), bad_locs, flag_col);
 
@@ -133,13 +131,13 @@ namespace INTERNAL_CHECKS
 			cloud_obs.setFlags(bad_locs, float(1));
 			c++;
 		}
-		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), float(0), "!");
+		varraysize flag_locs = npwhere(station.getQc_flags(flag_col), "!", float(0));
 		print_flagged_obs_number(logfile, "Negative cloud", "cloud", flag_locs.size());
 
 		
 	}
 
-	void ccc(CStation &station, std::vector<int> flag_col, std::ofstream& logfile)
+	void ccc(CStation& station, std::vector<int> flag_col, std::ofstream& logfile)
 	{
 		if (flag_col.size() != 8)
 		{

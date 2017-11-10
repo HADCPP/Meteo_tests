@@ -18,6 +18,7 @@
 #include "spike.h"
 #include "humidity.h"
 #include "clouds.h"
+#include "climatological.h"
 
 #include <vector>
 #include <ctime>

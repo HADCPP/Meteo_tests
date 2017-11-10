@@ -26,7 +26,7 @@ using namespace INTERNAL_CHECKS;
 
 
 
- string DATE[2]={ "20090101", "20100101"};
+ string DATE[2]={ "20060101", "20100101"};
 
 //string LOG_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\Data\\";
 //string CSV_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\PEI 2015-2016H\\";

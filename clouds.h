@@ -63,7 +63,7 @@ namespace INTERNAL_CHECKS
 	If cloud base is 22000ft, then set to missing
     :param obj station: station object
 	*/
-	void fix_cloud_base(CStation station);
+	void fix_cloud_base(CStation& station);
 
 	/*Non-sensical cloud value
     
@@ -72,6 +72,6 @@ namespace INTERNAL_CHECKS
     :param file logfile: logfile to store output*/
 	void negative_cloud(CStation& station, int flag_col, std::ofstream& logfile);
 
-	void ccc(CStation &station, std::vector<int> flag_col, std::ofstream& logfile);
+	void ccc(CStation& station, std::vector<int> flag_col, std::ofstream& logfile);
 		
 }

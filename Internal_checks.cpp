@@ -150,16 +150,17 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.climatological)
 			{
-				
+				coc( station, { "temperatures", "dewpoints" }, { 24, 25 }, DATESTART, DATEEND,logfile);
 			}
+			
 			if (mytest.spike)
 			{
-				sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
-				UTILS::apply_windspeed_flags_to_winddir(station);
+				/*sc(station, {"temperatures", "dewpoints", "slp", "windspeeds"}, {27, 28, 29, 65}, DATESTART, DATEEND, logfile, second);
+				UTILS::apply_windspeed_flags_to_winddir(station);*/
 			}
 			if (mytest.humidity)
 			{
-
+				//hcc(station,{ 30, 31, 32}, DATESTART, DATEEND, logfile);
 			}
 			if (mytest.cloud)
 			{

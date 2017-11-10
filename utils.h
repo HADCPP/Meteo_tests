@@ -51,6 +51,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	CMaskedArray<float>  apply_filter_flags(CMetVar& st_var);
 	void print_flagged_obs_number(std::ofstream& logfile, std::string test, std::string variable, int nflags);
 	inline float __cdecl MyApplyRoundFunc(float n){return std::floor(n);}
+	inline float __cdecl MyApplyCeilFunc(float n){ return std::ceil(n); }
 	inline float __cdecl MyApplyCastFloat(int n){ return static_cast<float>(n); }
 	template<typename T>
 	inline T __cdecl MyApplyAbsFunc(T n){return std::abs(n);}
@@ -75,7 +76,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	inline float reporting_frequency(CMaskedArray<float>& good_indata);
 
 	void create_bins(varrayfloat& indata, float binwidth, varrayfloat &bins, varrayfloat  &bincenters);
-
+	void create_bins(std::valarray<CMaskedArray<float>>& indata, float binwidth, varrayfloat& bins, varrayfloat& bincenters);
 	template<typename T>
 	inline T idl_median(std::valarray<T> indata)
 	{
@@ -289,12 +290,11 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		float threshold;
 		if (indata.size() > 0)  //sort indata ?
 		{
-			std::valarray<T> dummy = indata;
-			dummy.apply(MyApplyAbsFunc);
+			std::valarray<T> dummy = indata.apply(MyApplyAbsFunc);
 			dummy = np_ceil<T>(dummy);
-			std::valarray<T> full_edges = arange<float>(float(3 * (*max(std::begin(dummy), std::end(dummy)))), T(binmin), T(binwidth));
+			varrayfloat full_edges = arange<float>(float(3 * (*std::max_element( std::begin(dummy), std::end(dummy) ) ) ), T(binmin), T(binwidth));
 			dummy.free();
-			varrayfloat full_hist = histogram(indata.apply(MyApplyAbsFunc), full_edges);
+			varrayfloat full_hist = histogram<T>(indata, full_edges);
 			if (full_hist.size() > 1)
 			{
 				// use only the central section (as long as it's not just 2 bins)
@@ -304,7 +304,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				{
 					if (npwhere<float>(full_hist, "=", float(0)).size()>0)
 					{
-						limit = npwhere<float>(full_hist, "=", float(0))[i];  //where instead of argwhere??
+						limit = npwhere<float>(full_hist, "=", float(0))[i];  
 						i++;
 					}
 					else
@@ -315,7 +315,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				}
 				varrayfloat edges = full_edges[std::slice(0, limit, 1)];
 				varrayfloat hist = full_hist[std::slice(0, limit, 1)];
-				hist.apply(Log10Func);
+				hist = hist.apply(Log10Func);
 				//Initialiser les parametres
 
 				// DATA (X,Y)
@@ -333,20 +333,22 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 				//Use the Levenberg-Marquardt method to determine the parameters which
 				// minimize the sum of all squared residuals
 				parameter_vector  fit;
+
 				fit(0) = 1;
 				fit(1) = hist.max();
 
 				dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
 					residual,
-					dlib::derivative(residual),
+					residual_derivative,
 					data,
 					fit);
 				varrayfloat fit_curve = linear(full_edges, fit);
-				if (fit(1) < 0)
+
+				if (fit(0) < 0)
 				{
 					//in case the fit has a positive slope
 					//where does fit fall below log10(-0.1)
-					if (npwhere<float>(fit_curve, "<", float(-1)).size()>0)
+					if (npwhere<float>(fit_curve, "<", float(-1)).size() > 0)
 					{
 						size_t fit_below_point1 = npwhere<float>(fit_curve, "<", float(-1))[0];
 						varrayfloat dummy = full_hist[std::slice(fit_below_point1, full_hist.size() - fit_below_point1, 1)];
@@ -373,8 +375,8 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	}
 
 	//Sum up a single month across all years(e.g.all Januaries)
-	void concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, varrayfloat& data, std::vector<CMaskedArray<float>>& this_month,
-		std::vector<int>& year_ids, varrayfloat& datacount, float missing_value, bool hours = true);
+	std::valarray<int> concatenate_months(std::valarray<std::pair<int, int>>& month_ranges, CMaskedArray<float>& data, std::vector<CMaskedArray<float>>& this_month,
+		std::vector<int>& year_ids, float missing_value, bool hours = true);
 
 	inline float percentiles(varrayfloat& data, float percent, bool idl=false);
 	void winsorize(varrayfloat& data, float percent, bool idl = false);

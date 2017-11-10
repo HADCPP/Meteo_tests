@@ -15,5 +15,32 @@
 
 namespace INTERNAL_CHECKS
 {
-	void coc(CStation& station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date  start, boost::gregorian::date end, std::ofstream&  logfile, bool idl = false);
+
+	/*
+		Get the weights for the low pass filter.
+		:param array monthly_vqvs : monthly anomalies
+		: param array monthly_subset : which values to take
+		: param array filter_subset : which values to take
+		: returns :
+		weights
+	*/
+
+	float coc_get_weights(const CMaskedArray<float>& monthly_vqvs, varraysize monthly_subset, varraysize filter_subset);
+		
+
+	/*
+			Run the low pass filter - get suitable ranges, get weights, and apply
+
+			: param array normed_anomalies : input normalised anomalies
+			: param array year_ids : look up array for which row is which year
+			: param array monthly_vqvs : monthly average anomalies
+			: param int years : number of years in data
+			: returns :
+			normed_anomalies - with weights applied
+	*/
+	void coc_low_pass_filter(std::valarray<CMaskedArray<float>>& normed_anomalies,const  std::vector<int>& year_ids,const CMaskedArray<float>& monthly_vqvs, int years);
+	
+		
+	void coc(CStation& station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date  start,
+		boost::gregorian::date end, std::ofstream&  logfile, bool idl = false);
 }

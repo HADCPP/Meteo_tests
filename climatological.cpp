@@ -8,74 +8,116 @@ using namespace PYTHON_FUNCTION;
 
 namespace INTERNAL_CHECKS
 {
+
+	float coc_get_weights(const CMaskedArray<float>& monthly_vqvs, varraysize monthly_subset, varraysize filter_subset)
+	{
+		float weights;
+		varrayfloat filterweights{ 1., 2., 3., 2., 1. };
+		varrayfloat dummy = monthly_vqvs.m_data[monthly_subset];
+		dummy -= monthly_vqvs.m_data[monthly_subset].apply(MyApplyRoundFunc);
+		dummy = dummy.apply(MyApplyCeilFunc);
+		dummy *= filterweights[filter_subset];
+
+		if (dummy.sum() == 0)
+		{
+			weights = 0;
+		}
+		else
+		{
+			varrayfloat dum = filterweights[filter_subset];
+			dum *= monthly_vqvs.m_data[monthly_subset];
+			weights = dum.sum() / dummy.sum();	
+		}
+
+		return weights;
+	}
+	void coc_low_pass_filter(valarray<CMaskedArray<float>>& normed_anomalies,const vector<int>& year_ids,const CMaskedArray<float>& monthly_vqvs, int years)
+	{
+		varraysize monthly_range;
+		varraysize filter_range;
+
+		for (int year = 0; year < years;year++)
+		{
+			if (year == 0)
+			{
+				monthly_range = Arange(3, 0);
+				filter_range = Arange(5, 2);
+			}
+			else if (year == 1)
+			{
+				monthly_range = Arange(4, 0);
+				filter_range = Arange(5, 1);
+			}
+			else if (year == years - 2)
+			{
+				monthly_range = Arange(0, -4);
+				filter_range = Arange(4, 0);
+			}
+			else if (year == years - 1)
+			{
+				monthly_range = Arange(0, -3);
+				filter_range = Arange(3, 0);
+			}
+			else
+			{
+				monthly_range = Arange(year + 3, year - 2);
+				filter_range = Arange(5);
+			}
+			for (size_t i = 0; i < monthly_range.size(); i++)
+			{
+				if (monthly_range[i] < 0) monthly_range[i] -= monthly_vqvs.size();
+			}
+			varrayfloat dummy = monthly_vqvs.m_data[monthly_range].apply(MyApplyAbsFunc);
+
+			if (dummy.sum() != 0)
+
+			{
+				float weights = coc_get_weights(monthly_vqvs, monthly_range, filter_range);
+	
+				varraysize year_locs = npwhere(year_ids,"=", year);
+
+				for (size_t i = 0; i < year_locs.size(); i++)
+				{
+					varrayfloat indata = normed_anomalies[year_locs[i]].m_data;
+					indata -= weights;
+					normed_anomalies[year_locs[i]].m_data = indata;
+				}
+			}
+		}
+	}
 	void coc(CStation& station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date  start, boost::gregorian::date end, std::ofstream&  logfile, bool idl )
 	{
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			CMetVar st_var = station.getMetvar(variable);
+			CMetVar& st_var = station.getMetvar(variable);
 			CMaskedArray<float> all_filtered = apply_filter_flags(st_var);
 
-			map<int, int> month_ranges = month_starts_in_pairs(start, end);
+			vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
 			// array de taille 12*43*2 où chaque ligne correspond à un mois
-			std::vector<std::valarray<pair<int, int>>> month_ranges_years;
-			int taille = int(month_ranges.size() / 12);
-			std::valarray<pair<int, int>> month(taille);
-			int index = 0;
-			int compteur = 0;
-			int iteration = 1;
-			map<int, int>::iterator month_it = month_ranges.begin();
-			for (int i = 0; i < month_ranges.size(); i += 12)
-			{
-				if (iteration <= taille && i < month_ranges.size() && compteur<12)
-				{
-					month[index++] = make_pair(month_it->first, month_it->second);
-					iteration++;
-					if (i + 12 < month_ranges.size()) std::advance(month_it, 12);
-				}
-				else
-				{
-					if (compteur == 12) break;
-					month_ranges_years.push_back(month);
-					compteur++;
-					month.resize(taille);
-					index = 0;
-					i = month_ranges_years.size();
-					month_it = month_ranges.begin();
-					std::advance(month_it, i);
-					month[index++] = make_pair(month_it->first, month_it->second);
-					std::advance(month_it, 12);
-					iteration = 2;
-				}
-				if (i + 12 >= month_ranges.size() && compteur<12)
-				{
-					i = month_ranges_years.size();
-					month_it = month_ranges.begin();
-					std::advance(month_it, i + 1);
-				}
-
-			}
+			std::vector<std::valarray<pair<int, int>>> month_ranges_years = L_reshape3(month_ranges, 12);		
 
 			for (int month = 0; month < 12; ++month)
 			{
 				varrayfloat  hourly_climatologies(Cast<float>(st_var.getMdi()), 24);
 				//append all e.g.Januaries together
+
 				vector<int> year_ids;
-				varrayfloat datacount( month_ranges.size());
+				varrayInt datacount( month_ranges.size());
 				vector<CMaskedArray<float>> this_month;
 				vector<CMaskedArray<float>> this_month_filtered;
-				concatenate_months(month_ranges_years[v], all_filtered.m_data, this_month, year_ids, datacount, Cast<float>(st_var.getMdi()), true);
-				concatenate_months(month_ranges_years[v], st_var.getData(), this_month, year_ids, datacount, Cast<float>(st_var.getMdi()), true);
+				datacount = concatenate_months(month_ranges_years[month], st_var.getAllData(), this_month_filtered, year_ids, Cast<float>(st_var.getMdi()), true);
+				year_ids.clear();
+				datacount = concatenate_months(month_ranges_years[month], all_filtered, this_month, year_ids, Cast<float>(st_var.getMdi()), true);
+				
 				
 				//if fixed climatology period, sort this here
 
-				//this_month = this_month.reshape(-1,24)
-				//this_month_filtered = this_month_filtered.reshape(-1, 24)
 
 				//get hourly climatology for each month
 				for (int hour = 0; hour < 24; ++hour)
 				{
-					CMaskedArray<float> this_hour = this_month[hour];
+					CMaskedArray<float> this_hour = ExtractColumn(this_month,hour);
 					//need to have data if this is going to work!
 					if (this_hour.compressed().size()>0)
 					{
@@ -87,17 +129,17 @@ namespace INTERNAL_CHECKS
 							for (size_t i = 0; i < dummy.size() - 1; ++i)
 								dummy[i] = this_hour.compressed()[i];
 							dummy[dummy.size() - 1] = float(-999999);
+
 							winsorize(dummy, 0.05, idl);
-							CMaskedArray<float> this_hour = CMaskedArray<float>(dummy);
-							hourly_climatologies[hour] = this_hour.ma_sum() / (this_hour.size() - 1);
+							hourly_climatologies[hour] = dummy.sum() / (dummy.size() - 1);
 
 						}
 						else
 						{
 							varrayfloat dummy = this_hour.compressed();
 							winsorize(dummy, 0.05, idl);
-							CMaskedArray<float> this_hour = CMaskedArray<float>(dummy);
-							hourly_climatologies[hour] = this_hour.ma_mean();
+							
+							hourly_climatologies[hour] = dummy.sum()/dummy.size();
 						}
 					}
 				}
@@ -110,28 +152,64 @@ namespace INTERNAL_CHECKS
 					//can get stations with few obs in a particular variable.
 
 					//anomalise each hour over month appropriately
-					valarray<varrayfloat> anomalies(this_month.size()), anomalies_filtered(this_month_filtered.size());
+					valarray<CMaskedArray<float>> anomalies(this_month.size()), anomalies_filtered(this_month_filtered.size());
 
 					for (size_t i = 0; i < this_month.size(); ++i)
 					{
-						anomalies[i] = this_month[i].m_data - hourly_climatologies;
-					}
-					for (size_t i = 0; i < this_month_filtered.size(); ++i)
-					{
-						anomalies_filtered[i] = this_month_filtered[i].m_data - hourly_climatologies;
+						anomalies[i] = this_month[i];
+						anomalies[i].m_data -= hourly_climatologies;
+						anomalies[i].masked(this_month[i].m_fill_value);
+
+						anomalies_filtered[i] = this_month_filtered[i];
+						anomalies_filtered[i].m_data -= hourly_climatologies;
+						anomalies_filtered[i].masked(this_month_filtered[i].m_fill_value);
 					}
 
-					varraysize taille(anomalies.size());
-					for (size_t i = 0; i < taille.size(); i++)
+					varrayfloat Compress = CompressedMatrice(anomalies);
+					float iqr;
+					if (Compress.size() >= 10)
 					{
-						taille[i] = CompressedSize(anomalies[i], Cast<float>(st_var.getMdi()));
+						iqr = IQR(Compress)/2;
+						if (iqr < 1.5)  iqr = 1.5;
 					}
-					//float iqr;
-					if (taille.sum() >= 10)
+					else
+						iqr = Cast<float>(st_var.getMdi());
+
+					valarray<CMaskedArray<float>> normed_anomalies = anomalies;
+					valarray<CMaskedArray<float>> normed_anomalies_filtered = anomalies_filtered;
+
+					for (size_t i = 0; i < normed_anomalies.size(); i++)
 					{
+						normed_anomalies[i] /= iqr;
+						normed_anomalies_filtered[i] /= iqr;
+					}
+					// get average anomaly for year
+					CMaskedArray<float> monthly_vqvs(month_ranges_years[0].size());
+					monthly_vqvs.m_mask = false;
+					for (int year = 0; year < month_ranges_years[0].size(); year++)
+					{
+						varraysize year_locs = npwhere(year_ids, "=", year);
+						valarray<CMaskedArray<float>> this_year = normed_anomalies_filtered[year_locs];
+						varrayfloat Compress = CompressedMatrice(this_year);
+
+						if (Compress.size() > 0)
+						{
+							//need to have data for this to work!
+
+							monthly_vqvs.m_data[year] = idl_median(Compress);
+						}
+						else
+							monthly_vqvs.m_mask[year] = true;
 
 					}
-						
+					//low pass filter
+					coc_low_pass_filter(normed_anomalies, year_ids, monthly_vqvs, int(month_ranges_years[0].size()));
+					varrayfloat bins, bincenters;
+					UTILS::create_bins(normed_anomalies, 1, bins, bincenters);
+
+					varrayfloat binEdges(bins);
+					//varrayfloat hist = PYTHON_FUNCTION::histogram(normed_anomalies, binEdges);
+					//float gaussian = fit_gaussian(bincenters,hist,hist.max(),)
 				}
 			}
 

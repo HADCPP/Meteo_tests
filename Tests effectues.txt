@@ -2,10 +2,10 @@ duplicate    ousmane   f
 odd  		 ousmane  f
 frequent  	 ousmane  f
 diurnal  	 ousmane  f
-gap          Ous
+gap          ousmane (verification en cours ,fonction dgc_montly)
 records   ousmane f
 streaks  ousmane  f
-climatological ous... (Verification en cours) 
+climatological ousmane f
 spike  ousmane  f
 humidity  ousman  f
 cloud  ousmane  f

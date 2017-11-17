@@ -136,6 +136,10 @@ namespace INTERNAL_CHECKS
 				else
 					logfile << "   Diurnal Cycle Check not run as CStation latitude  " << station.getLat()<< "  >  60 ";*/
 			}
+			if (mytest.gap)
+			{
+					dgc(station, { "temperatures","dewpoints","slp"}, {5,6,7 },DATESTART,DATEEND, logfile);
+			}
 			if (mytest.records)
 			{
 				//krc(station, { "temperatures", "dewpoints", "windspeeds", "slp" }, { 8, 9, 10, 11 }, logfile);
@@ -150,7 +154,7 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.climatological)
 			{
-				coc( station, { "temperatures", "dewpoints" }, { 24, 25 }, DATESTART, DATEEND,logfile);
+				//coc( station, { "temperatures", "dewpoints" }, { 24, 25 }, DATESTART, DATEEND,logfile);
 			}
 			
 			if (mytest.spike)

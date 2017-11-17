@@ -26,7 +26,7 @@ using namespace INTERNAL_CHECKS;
 
 
 
- string DATE[2]={ "20060101", "20100101"};
+ string DATES[2]={ "20060101", "20100101"};
 
 //string LOG_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\Data\\";
 //string CSV_OUTFILE_LOCS = "P: \\Project\\wbsTools\\HadISD\\Weather\\PEI 2015-2016H\\";
@@ -113,7 +113,7 @@ void ncdf(vector<CStation> station_info)
 		cout <<"Writing data to   "<<NETCDF_DATA_LOCS << endl;
 		std::size_t pos = nom_file.find(' ');
 		//nom_file = nom_file.substr(0,pos);
-		MakeNetcdfFiles(fichier, DATE, stat); // Creer les fichiers netcdf
+		MakeNetcdfFiles(fichier, DATES, stat); // Creer les fichiers netcdf
 	}
 	cout << "NetCDF files created" << endl;
 }
@@ -139,7 +139,7 @@ int main(int arg, char * argv)
 	//ncdf(station_info);
 	bool second = false;
 	test mytest;
-	internal_checks(station_info, mytest, second, DATE);
+	internal_checks(station_info, mytest, second, DATES);
 	std::system("PAUSE");
 	return 0;
 	

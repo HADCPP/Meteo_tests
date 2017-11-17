@@ -50,12 +50,12 @@ namespace INTERNAL_CHECKS
 			}
 			else if (year == years - 2)
 			{
-				monthly_range = Arange(0, -4);
+				monthly_range = Arange(monthly_vqvs.size(), -4 + monthly_vqvs.size());
 				filter_range = Arange(4, 0);
 			}
 			else if (year == years - 1)
 			{
-				monthly_range = Arange(0, -3);
+				monthly_range = Arange(monthly_vqvs.size(), -3 + monthly_vqvs.size());
 				filter_range = Arange(3, 0);
 			}
 			else
@@ -63,10 +63,7 @@ namespace INTERNAL_CHECKS
 				monthly_range = Arange(year + 3, year - 2);
 				filter_range = Arange(5);
 			}
-			for (size_t i = 0; i < monthly_range.size(); i++)
-			{
-				if (monthly_range[i] < 0) monthly_range[i] -= monthly_vqvs.size();
-			}
+			
 			varrayfloat dummy = monthly_vqvs.m_data[monthly_range].apply(MyApplyAbsFunc);
 
 			if (dummy.sum() != 0)
@@ -85,6 +82,60 @@ namespace INTERNAL_CHECKS
 			}
 		}
 	}
+
+	
+	void coc_find_and_apply_flags(std::valarray<std::pair<int, int>>& month_ranges, valarray<CMaskedArray<float>>& normed_anomalies, varrayfloat& flags, const vector<int>& year_ids, float threshold, int gap_start, bool upper)
+	{
+		int y = 0;
+		for (pair<int, int> year : month_ranges)
+		{
+			varraysize year_locs = npwhere(year_ids, "=", y);
+			valarray<CMaskedArray<float>> this_year_data(year_locs.size());
+			for (size_t i = 0; i < year_locs.size(); i++)
+			{
+				this_year_data[i] = normed_anomalies[year_locs[i]]; 
+			}
+			varrayfloat dummy = flags[std::slice(year.first, year.second - year.first, 1)];
+			vector<varrayfloat> this_year_flags = C_reshape(dummy, 24);
+			valarray<pair<size_t,size_t>> tentative_locations;
+
+			if (upper)
+			{
+				tentative_locations = np_ma_where(this_year_data, ">", threshold);
+			}
+			else
+			{
+				
+				tentative_locations = np_ma_where(this_year_data, "<", -threshold);
+			}
+			
+			for (size_t i = 0; i < tentative_locations.size(); i++)
+			{
+				this_year_flags[tentative_locations[i].first][tentative_locations[i].second] = 2;
+			}
+
+			if (gap_start != 0)
+			{
+				valarray<pair<size_t, size_t>> gap_cleaned_locations;
+				if (upper)
+					gap_cleaned_locations = np_ma_where(this_year_data, ">", float(gap_start));
+				else 
+					gap_cleaned_locations = np_ma_where(this_year_data, "<", float(gap_start));
+
+				
+
+				for (size_t i = 0; i < gap_cleaned_locations.size(); i++)
+				{
+					this_year_flags[gap_cleaned_locations[i].first][gap_cleaned_locations[i].second] = 1;
+				}		
+			}
+			varrayfloat year_flag = Shape(this_year_flags);
+			flags[std::slice(year.first, year.second - year.first, 1)] = year_flag;
+			y++;
+
+		}
+	}
+		
 	void coc(CStation& station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date  start, boost::gregorian::date end, std::ofstream&  logfile, bool idl )
 	{
 		int v = 0;
@@ -103,21 +154,21 @@ namespace INTERNAL_CHECKS
 				//append all e.g.Januaries together
 
 				vector<int> year_ids;
-				varrayInt datacount( month_ranges.size());
+				varrayInt datacount(month_ranges.size());
 				vector<CMaskedArray<float>> this_month;
 				vector<CMaskedArray<float>> this_month_filtered;
 				datacount = concatenate_months(month_ranges_years[month], st_var.getAllData(), this_month_filtered, year_ids, Cast<float>(st_var.getMdi()), true);
 				year_ids.clear();
 				datacount = concatenate_months(month_ranges_years[month], all_filtered, this_month, year_ids, Cast<float>(st_var.getMdi()), true);
-				
-				
+
+
 				//if fixed climatology period, sort this here
 
 
 				//get hourly climatology for each month
 				for (int hour = 0; hour < 24; ++hour)
 				{
-					CMaskedArray<float> this_hour = ExtractColumn(this_month,hour);
+					CMaskedArray<float> this_hour = ExtractColumn(this_month, hour);
 					//need to have data if this is going to work!
 					if (this_hour.compressed().size()>0)
 					{
@@ -138,8 +189,8 @@ namespace INTERNAL_CHECKS
 						{
 							varrayfloat dummy = this_hour.compressed();
 							winsorize(dummy, 0.05, idl);
-							
-							hourly_climatologies[hour] = dummy.sum()/dummy.size();
+
+							hourly_climatologies[hour] = dummy.sum() / dummy.size();
 						}
 					}
 				}
@@ -158,18 +209,18 @@ namespace INTERNAL_CHECKS
 					{
 						anomalies[i] = this_month[i];
 						anomalies[i].m_data -= hourly_climatologies;
-						anomalies[i].masked(this_month[i].m_fill_value);
+						//anomalies[i].masked(this_month[i].m_fill_value);
 
 						anomalies_filtered[i] = this_month_filtered[i];
 						anomalies_filtered[i].m_data -= hourly_climatologies;
-						anomalies_filtered[i].masked(this_month_filtered[i].m_fill_value);
+
 					}
 
 					varrayfloat Compress = CompressedMatrice(anomalies);
 					float iqr;
 					if (Compress.size() >= 10)
 					{
-						iqr = IQR(Compress)/2;
+						iqr = IQR(Compress) / 2;
 						if (iqr < 1.5)  iqr = 1.5;
 					}
 					else
@@ -208,12 +259,53 @@ namespace INTERNAL_CHECKS
 					UTILS::create_bins(normed_anomalies, 1, bins, bincenters);
 
 					varrayfloat binEdges(bins);
-					//varrayfloat hist = PYTHON_FUNCTION::histogram(normed_anomalies, binEdges);
-					//float gaussian = fit_gaussian(bincenters,hist,hist.max(),)
+					Compress = CompressedMatrice(normed_anomalies);
+					double mu = Compress.sum() / Compress.size();
+					WBSF::CStatistic stat;
+					for (size_t i = 0; i < Compress.size(); i++)
+					{
+						stat += Compress[i];
+					}
+
+
+					varrayfloat hist = PYTHON_FUNCTION::histogram(Compress, binEdges);
+					varrayfloat gaussian = fit_gaussian(bincenters, hist, hist.max(), mu, stat[WBSF::STD_DEV]);
+
+					float minimum_threshold = std::round(1. + invert_gaussian(FREQUENCY_THRESHOLD, gaussian));
+
+					size_t uppercount = np_ma_where(normed_anomalies, ">", minimum_threshold).size();
+					size_t lowercount = np_ma_where(normed_anomalies, "<", -minimum_threshold).size();
+
+					varrayfloat these_flags = station.getQc_flags(flag_col[v]);
+
+					int gap_start = dgc_find_gap(hist, binEdges, minimum_threshold, 1);
+
+					coc_find_and_apply_flags(month_ranges_years[month], normed_anomalies, these_flags, year_ids, minimum_threshold, gap_start, true);
+					
+					gap_start = dgc_find_gap(hist, binEdges, -minimum_threshold, 1);
+					coc_find_and_apply_flags(month_ranges_years[month], normed_anomalies, these_flags, year_ids, minimum_threshold, gap_start, false);
+
+					station.setQc_flags(these_flags, flag_col[v]);
+
 				}
 			}
+			varraysize flag_locs = npwhere(station.getQc_flags(flag_col[v]), "!", float(0));
+			//copy flags into attribute
+			st_var.setFlags(flag_locs, float(1));
+
+			print_flagged_obs_number(logfile, "Climatological", variable, flag_locs.size());
+			logfile << "where " << endl;
+			size_t nflags = npwhere(station.getQc_flags(flag_col[v]), "=", float(1)).size();
+
+			print_flagged_obs_number(logfile, "  Firm Clim", variable, nflags);
+
+			nflags = npwhere(station.getQc_flags(flag_col[v]), "=", float(2)).size();
+
+			print_flagged_obs_number(logfile, "  Tentative Clim", variable, nflags);
 
 			v++;
 		}
+
+		append_history(station, "Climatological Check");
 	}
 }

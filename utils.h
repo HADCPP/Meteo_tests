@@ -13,6 +13,7 @@
 typedef dlib::matrix<double, 1, 1> input_vector;
 typedef dlib::matrix<double, 2, 1> parameter_vector;
 typedef dlib::matrix<double, 3, 1> parameter_vector1;
+typedef dlib::matrix<double, 5, 1> parameter_vector2;
 
 
 namespace UTILS
@@ -117,21 +118,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 
 		return temp;
 	}
-	inline double model1(const input_vector&  input, const parameter_vector1& params)
-	{
-		/*	p[0] = mean
-			p[1] = sigma
-			p[2] = normalisation
-		*/
-		const double p0 = params(0);
-		const double p1 = params(1);
-		const double p2 = params(2);
-
-		const double X = input(0);
-		const double temp = p2*(std::exp(-(X-p0)*(X-p0)))/(2*p1*p1);
-
-		return temp;
-	}
+	
 	// ----------------------------------------------------------------------------------------
 
 	// This function is the "residual" for a least squares problem.   It takes an input/output
@@ -142,10 +129,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	{
 		return model(data.first, params) - data.second;
 	}
-	inline double residual1(const std::pair<input_vector, double>& data, const parameter_vector1& params)
-	{
-		return model1(data.first, params) - data.second;
-	}
+
 	// ----------------------------------------------------------------------------------------
 	// This function is the derivative of the residual() function with respect to the parameters.
 	inline parameter_vector residual_derivative(const std::pair<input_vector, double>& data, const parameter_vector& params)
@@ -165,24 +149,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 
 		return der;
 	}
-	inline parameter_vector1 residual_derivative1(const std::pair<input_vector, double>& data, const parameter_vector1& params)
-	{
-		parameter_vector1 der(3);
-
-		const double p0 = params(0);
-		const double p1 = params(1);
-		const double p2 = params(2);
-
-		const double X = data.first(0);
-
-		const double temp = std::exp(-(X - p0)*(X - p0));
-
-		der(0) = -2*(X-p0)*p2*temp/(2*p1*p1); 
-		der(1) =  -p2*temp/(p1*p1*p1);
-		der(2) = temp / (2 * p1*p1);
-		
-		return der;
-	}
+	
 	/*
 	decay function for line fitting
 	p[0] = intercept
@@ -385,6 +352,66 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	void reshapeMonth(std::vector<std::valarray<std::pair<int, int>>>& month_ranges_years, std::map<int, int>&  month_ranges);
 	// array de taille (nombre d'années*12 où chaque ligne correspond à une année
 	void reshapeYear(std::vector<std::vector<std::pair<int, int>>>& month_ranges_years, std::map<int, int>&  month_ranges);
+
+	/*  Fit data with a gaussian distribution*/
+	inline parameter_vector1 residual_derivativeGaussian(const std::pair<input_vector, double>& data, const parameter_vector1& params)
+	{
+		parameter_vector1 der(3);
+
+		const double p0 = params(0);
+		const double p1 = params(1);
+		const double p2 = params(2);
+
+		const double X = data.first(0);
+
+		const double temp = std::exp(-(X - p0)*(X - p0) / (2 * p1*p1));
+
+		der(0) = (p2*(X - p0) / (p1*p1))*temp;
+
+		der(1) = p2*(((X - p0)*(X - p0)) / (p1*p1*p1))*temp;
+		der(2) = temp;
+
+		return der;
+	}
+	inline double modelGaussian(const input_vector&  input, const parameter_vector1& params)
+	{
+		/*	p[0] = mean
+		p[1] = sigma
+		p[2] = normalisation
+		*/
+		const double p0 = params(0);
+		const double p1 = params(1);
+		const double p2 = params(2);
+
+		const double X = input(0);
+		const double temp = p2*(std::exp(-(X - p0)*(X - p0) / (2 * p1*p1)));
+
+		return temp;
+	}
+	inline double residualGaussian(const std::pair<input_vector, double>& data, const parameter_vector1& params)
+	{
+		return modelGaussian(data.first, params) - data.second;
+	}
+	inline varrayfloat Gaussian(varrayfloat& input, varrayfloat& params)
+	{
+		/*	p[0] = mean
+		p[1] = sigma
+		p[2] = normalisation
+		*/
+		const double p0 = params[0];
+		const double p1 = params[1];
+		const double p2 = params[2];
+
+		varrayfloat temp(input.size());
+		for (size_t i = 0; i < input.size(); i++)
+		{
+			const double X = input[i];
+			temp[i] = p2*(std::exp(-(X - p0)*(X - p0) / (2 * p1*p1)));
+		}
+
+		return temp;
+	}
+	
 	/*Fit a straight line to the data provided
 		Inputs:
 		  x - x-data
@@ -398,7 +425,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		parameter_vector1  fit;
 		fit(0) = mu;
 		fit(1) = sig;
-		fit(3) = norm;
+		fit(2) = norm;
 		// DATA (X,Y)
 
 		std::vector<std::pair<input_vector, double>> data;
@@ -410,8 +437,8 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		}
 
 		dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
-			residual1,
-			residual_derivative1,
+			residualGaussian,
+			residual_derivativeGaussian,
 			data,
 			fit);
 		varrayfloat fits(3);
@@ -420,6 +447,111 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		fits[2] = fit(2);
 		return fits;
 	}
+
+	inline float invert_gaussian(float Y, varrayfloat& p)
+	{
+		return p[0] + (p[1] * std::sqrt(-2 * std::log(Y / p[2])));
+	}
+
+	inline double modelGaussianHermite(const input_vector&  input, const parameter_vector2& params)
+	{
+		//Model is a Gauss-Hermite function
+		
+		const double A = params(0);
+		const double x0 = params(1);
+		const double s = params(2);
+		const double h3 = params(3);
+		const double h4 = params(4);
+		/* The Gauss-Hermite function is a superposition of functions of the form
+		 F = (x-xc)/s                                            
+			E =  A.Exp[-1/2.F^2] * {1 + h3[c1.F+c3.F^3] + h4[c5+c2.F^2+c4.F^4]} 
+			From http://www.astro.rug.nl/software/kapteyn-beta/plot_directive/EXAMPLES/kmpfit_gausshermite.py
+		*/
+		const double c0 = std::sqrt(6.0) / 4.0;
+		const double c1 = -std::sqrt(3.0);
+		const double c2 = -std::sqrt(6.0);
+		const double c3 = 2.0*(std::sqrt(3.0)) / 3.0;
+		const double c4 = std::sqrt(6.0) / 3.0;
+
+		const double X = input(0);
+
+		const double F = (X - x0) / s;
+
+		const double E = A*std::exp(-0.5*F*F)*(1.0 + h3*F*(c3*F*F + c1) + h4*(c0 + F*F*(c2 + c4*F*F)));
+
+		return E;
+	}
+
+	inline double residualGaussienHermite(const std::pair<input_vector, double>& data, const parameter_vector2& params)
+	{
+		return modelGaussianHermite(data.first, params) - data.second;
+	}
+	inline parameter_vector2 residual_derivativeGaussienHermite(const std::pair<input_vector, double>& data, const parameter_vector2& params)
+	{
+		/* Derivée de la fonction de gauss hermite par rapport aux paramètres*/
+		parameter_vector2 der(5);
+
+		const double A = params(0);
+		const double x0 = params(1);
+		const double s = params(2);
+		const double h3 = params(3);
+		const double h4 = params(4);
+
+		const double c0 = std::sqrt(6.0) / 4.0;
+		const double c1 = -std::sqrt(3.0);
+		const double c2 = -std::sqrt(6.0);
+		const double c3 = 2.0*(std::sqrt(3.0)) / 3.0;
+		const double c4 = std::sqrt(6.0) / 3.0;
+
+		const double X = data.first(0);
+
+		const double F = (X - x0) / s;
+
+		const double E = A*std::exp(-0.5*F*F)*(1.0 + h3*F*(c3*F*F + c1) + h4*(c0 + F*F*(c2 + c4*F*F)));
+
+		
+
+		/*const double temp = std::exp(-(X - p0)*(X - p0) / (2 * p1*p1));
+
+		der(0) = (p2*(X - p0) / (p1*p1))*temp;
+
+		der(1) = p2*(((X - p0)*(X - p0)) / (p1*p1*p1))*temp;
+		der(2) = temp;*/
+
+		return der;
+	}
+
+	inline varrayfloat fit_gaussian_Hermite(const varrayfloat& initial_values, varrayfloat& x, varrayfloat& y, varrayfloat& err)
+	{
+		parameter_vector2  fit;
+		fit(0) = initial_values[0];
+		fit(1) = initial_values[1];
+		fit(2) = initial_values[2];
+		fit(3) = initial_values[3];
+		fit(4) = initial_values[4];
+		// DATA (X,Y)
+
+		std::vector<std::pair<input_vector, double>> data;
+		input_vector input;
+		for (size_t i = 0; i < x.size(); ++i)
+		{
+			input(0) = x[i];
+			data.push_back(std::make_pair(input, y[i]));
+		}
+
+		/*dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
+			residualGaussienHermite,
+			residual_derivativeGaussian,
+			data,
+			fit);*/
+		varrayfloat fits(3);
+		fits[0] = fit(0);
+		fits[1] = fit(1);
+		fits[2] = fit(2);
+		return fits;
+	}
+	/*  Fit data with  distribution of Gauss_Hermite*/
+	
 	template<typename T>
 	T Somme(std::vector<T> vec)
 	{
@@ -430,4 +562,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		}
 		return sum;
 	}
+
+	float mean_absolute_deviation(const varrayfloat& data, bool median = false);
+
 }

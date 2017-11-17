@@ -353,14 +353,14 @@ namespace UTILS
 		for (size_t i = 0; i < indata.size(); i++)
 		{
 			Min[i] = indata[i].compressed().min();
-			Max[i] = indata[i].compressed().min();
+			Max[i] = indata[i].compressed().max();
 		}
 
 		int bmins = int(floor(Min.min()));
 		int bmax = int(ceil(Max.max()));
 		//set up the bins
 		bins = PYTHON_FUNCTION::arange<float>(bmax + (3. * binwidth), bmins - binwidth, binwidth);
-		bincenters.resize(bins.size());
+		bincenters.resize(bins.size()-1);
 		for (int i = 0; i < bins.size() - 1; i++)
 			bincenters[i] = 0.5*(bins[i] + bins[i + 1]);
 
@@ -497,7 +497,6 @@ namespace UTILS
 			}
 		}
 	}
-
 	void reshapeYear(std::vector<std::vector<std::pair<int, int>>>& month_ranges_years, std::map<int, int>&  month_ranges)
 	{
 		int iteration = 1;
@@ -523,5 +522,30 @@ namespace UTILS
 		month_ranges_years.push_back(month);
 	}
 
-	
+	float mean_absolute_deviation(const varrayfloat& data, bool median )
+	{
+		//''' Calculate the MAD of the data '''
+		float mad=0;
+		if (median)
+		{
+			float med = idl_median(data);
+			for (size_t i = 0; i < data.size();i++)
+				mad += abs(data[i]-med);
+
+			mad /= data.size();
+		}
+
+		else
+		{
+
+			float mean = data.sum()/data.size();
+			for (size_t i = 0; i < data.size(); i++)
+				mad += abs(data[i] - mean);
+
+			mad /= data.size();
+		}
+		
+		return mad;// mean_absolute_deviation
+	}
+
 }

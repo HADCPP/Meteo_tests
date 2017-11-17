@@ -19,6 +19,8 @@
 #include "humidity.h"
 #include "clouds.h"
 #include "climatological.h"
+#include "distributional_gap.h"
+
 
 #include <vector>
 #include <ctime>
@@ -41,7 +43,7 @@ struct test
 	bool odd = false;
 	bool frequent = false;
 	bool diurnal = false;
-	bool gap = false;
+	bool gap = true;
 	bool records = true;
 	bool streaks = true;
 	bool climatological = true;

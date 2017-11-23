@@ -58,21 +58,22 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 	inline T __cdecl MyApplyAbsFunc(T n){return std::abs(n);}
 	inline float __cdecl Log10Func(float n){return std::log10f(n);}
 	/*
+	Following reporting_accuracy.pro method.
+	Uses histogram of remainders to look for special values
+
+	:param array indata: masked array
+	:output: frequency - reporting frequency of data
+	*/
+	inline float reporting_accuracy(CMaskedArray<float>& indata, bool winddir = false);
+	inline float reporting_accuracy(varrayfloat& good_values, bool winddir=false);
+	
+	/*
 	Uses histogram of remainders to look for special values
 
 	: param array good_values :valarray (masked array.compressed())
 	: param bool winddir : true if processing wind directions
 
 	: output : resolution - reporting accuracy(resolution) of data
-	*/
-	inline float reporting_accuracy(CMaskedArray<float>& indata, bool winddir = false);
-
-	/*
-		Following reporting_accuracy.pro method.
-		Uses histogram of remainders to look for special values
-
-		:param array indata: masked array
-		:output: frequency - reporting frequency of data
 	*/
 	inline float reporting_frequency(CMaskedArray<float>& good_indata);
 
@@ -405,7 +406,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 		varrayfloat temp(input.size());
 		for (size_t i = 0; i < input.size(); i++)
 		{
-			const double X = input[i];
+			 double X = input[i];
 			temp[i] = p2*(std::exp(-(X - p0)*(X - p0) / (2 * p1*p1)));
 		}
 
@@ -436,7 +437,7 @@ bool do_qc_flags = true, bool do_flagged_obs = true);
 			data.push_back(std::make_pair(input, y[i]));
 		}
 
-		dlib::solve_least_squares_lm(dlib::objective_delta_stop_strategy(1e-7).be_verbose(),
+		dlib::solve_least_squares(dlib::objective_delta_stop_strategy(1e-9).be_verbose(),
 			residualGaussian,
 			residual_derivativeGaussian,
 			data,

@@ -9,37 +9,36 @@ using namespace boost::numeric::ublas;
 
 namespace INTERNAL_CHECKS
 {
-	void evc(CStation &station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile, bool idl )
+	void evc(CStation& station, std::vector<std::string> variable_list, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end, std::ofstream& logfile, bool idl )
 	{
 		//very similar to climatological check - ensure that not duplicating
 		int v = 0;
 		for (string variable : variable_list)
 		{
-			CMetVar st_var = station.getMetvar(variable);
-			float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var).compressed());
+			CMetVar& st_var = station.getMetvar(variable);
+			float mdi = Cast<float>(st_var.getMdi());
+			float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var));
 
 			int  reporting_freq = reporting_frequency(apply_filter_flags(st_var));
-			map<int, int> month_ranges = month_starts_in_pairs(start, end);
+			std::vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
 			
-			std::vector<std::valarray<pair<int, int>>> month_ranges_years;
-			reshapeMonth(month_ranges_years, month_ranges);
-			int taille = int(month_ranges.size() / 12);
-
-			std::vector<varrayfloat> month_data_count;
-			for (size_t i = 0; i < 12; ++i)
-			{
-				varrayfloat dum(st_var.getAllData().m_fill_value, taille);
-				month_data_count.push_back(dum);
-			}
-
+			std::vector<std::valarray<std::pair<int, int>>> month_ranges_years = L_reshape3(month_ranges, 12);
+			
 			for (size_t month = 0; month < 12; ++month)
 			{
 				//set up hourly climatologies
 				varrayfloat hourly_clims (st_var.getAllData().m_fill_value, 24);
 				std::vector<int> year_ids;
 				std::vector<CMaskedArray<float>> this_month;
-				
-				concatenate_months(month_ranges_years[v], st_var.getData(), this_month, year_ids, month_data_count[month], Cast<float>(st_var.getMdi()), true);
+				valarray<valarray<int>> month_data_count(month_ranges_years.size());
+
+				for (size_t i = 0; i < month_data_count.size(); i++)
+				{
+					valarray<int> dummy(0, 12);
+					month_data_count[i] = dummy;
+				}
+
+				month_data_count[month]=concatenate_months(month_ranges_years[v], st_var.getAllData(), this_month, year_ids,mdi, true);
 
 				//winsorize and get hourly climatology 
 				for (size_t h = 0; h < 24; ++month)
@@ -66,30 +65,241 @@ namespace INTERNAL_CHECKS
 							varrayfloat dummy = this_hour.compressed();
 							winsorize(dummy, 0.05, idl);
 							CMaskedArray<float> this_hour_winsorized = CMaskedArray<float>(dummy);
+							this_hour_winsorized.masked(mdi);
 							hourly_clims[h] = this_hour_winsorized.ma_mean();
 						}
 					}
 				}
-				//CMaskedArray<float> Hourly_Clims = ma_masked_where(hourly_clims,st_var.getAllData().fill_value(), hourly_clims);
-				valarray<varrayfloat> anomalies(this_month.size());
+
+				
+
+				valarray<CMaskedArray<float>> anomalies(this_month.size());
+
 				for (size_t i = 0; i < this_month.size(); ++i)
 				{
-					//anomalies[i] = this_month[i].m_data - Hourly_Clims.m_data;
+					anomalies[i] = this_month[i];
+					anomalies[i].m_data -= hourly_clims;
+					//anomalies[i].masked(this_month[i].m_fill_value);
+
 				}
 				//extract IQR of anomalies(using 1 / 2 value to match IDL)
-				varraysize tailles(anomalies.size());
-				for (size_t i = 0; i < tailles.size(); i++)
+				float iqr;
+				varrayfloat comp_anomalies = CompressedMatrice(anomalies);
+				if (comp_anomalies.size() >= 10)
 				{
-					tailles[i] = CompressedSize(anomalies[i], Cast<float>(st_var.getMdi()));
+					iqr = IQR(comp_anomalies) / 2.; // to match IDL
+					if (iqr < 1.5)  iqr = 1.5;
 				}
-				//float iqr;
+				else iqr = mdi;
+
+				valarray<CMaskedArray<float>> normed_anomalies = anomalies;
+
+				for (size_t i = 0; i < normed_anomalies.size(); i++)
+				{
+					normed_anomalies[i] /= iqr;
+				}
+
+				CMaskedArray<float> variances(mdi, month_ranges_years.size());
+				variances.m_mask = false;
+				varrayfloat rep_accuracies(mdi, month_ranges_years.size());
+				varrayfloat rep_freqs(mdi, month_ranges_years.size());
+
+				//extract variance of normalised anomalies for each year
+				
+				for (int y = 0; y < month_ranges_years.size();y++)
+				{
+					varraysize year_locs = npwhere(year_ids, "=", y);
+
+					valarray<CMaskedArray<float>> this_year = normed_anomalies[year_locs];
+					CMaskedArray<float> this_year_1D = Shape(this_year);
+					varrayfloat Compress = CompressedMatrice(this_year);
+					varrayfloat Compress1 = this_year_1D.compressed();
+					if (Compress.size() >= 30)
+					{
+						variances.m_data[y] = mean_absolute_deviation(Compress, true);
+						rep_accuracies[y] = reporting_accuracy(this_year_1D);
+						rep_freqs[y] = reporting_frequency(this_year_1D);
+					}
+					else variances.m_mask[y] = true;
+				}
+				varraysize good = npwhere(month_data_count[month], ">=", 100);
+				float median_variance,iqr_variance;
+				//get median and IQR of variance for all years for this month
+
+				if (good.size() > 0)
+				{
+					median_variance = idl_median(variances[good].compressed());
+					iqr_variance = IQR(variances[good].compressed()) / 2.; // to match IDL
+
+					if (iqr_variance < 0.01) iqr_variance = 0.01;
+				}
+				else
+				{
+					median_variance = mdi;
+					iqr_variance = mdi;
+				}
+
+				//if SLP, then get median and MAD of SLP and windspeed for month
+
+				if (variable == "slp" || variable == "windspeeds")
+				{
+					CMetVar& winds = station.getMetvar("windspeeds");
+					CMetVar& slp = station.getMetvar("slp");
+
+					//refactor this as similar in style to how target data extracted 
+					CMaskedArray<float> winds_year;
+					std::vector <std::vector<CMaskedArray<float >>> winds_month;
+					CMaskedArray<float> slp_year;
+					std::vector <std::vector<CMaskedArray<float >>> slp_month;
+					for (int y = 0; y < month_ranges_years.size(); y++)
+					{
+						
+
+						if (y == 0)
+						{
+							winds_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
+							winds_month.push_back(C_reshape(winds_year,24));
+
+							slp_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
+							slp_month.push_back(C_reshape(winds_year, 24));
+
+						}
+						else
+						{
+
+							winds_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
+							winds_month.push_back(C_reshape(winds_year, 24));
+
+							slp_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
+							slp_month.push_back(C_reshape(winds_year, 24));
+						}
+					}
+					/*
+					median_wind = np.ma.median(winds_month)
+					median_slp  = np.ma.median(slp_month)
+
+					wind_MAD = utils.mean_absolute_deviation(winds_month.compressed())
+					slp_MAD = utils.mean_absolute_deviation(slp_month.compressed())
+
+					if diagnostics:
+					print ("median windspeed {} m/s, MAD = {}".format(median_wind, wind_MAD))
+					print ("median slp {} hPa, MAD = {}".format(median_slp, slp_MAD))
+
+					*/
+
+				}
+				//now test to see if variance exceeds expected range
+				for (int y = 0; y < month_ranges_years.size(); y++)
+				{
+					if (variances[y] != mdi && iqr_variance != mdi && median_variance != mdi && month_data_count[y][month] >= DATA_COUNT_THRESHOLD)
+					{
+						//if SLP, then need to test if deep low pressure ("hurricane/storm") present
+						//   as this will increase the variance for this month + year
+						float iqr_threshold;
+						if (variable == "slp" || variable == "windspeeds")
+						{
+							iqr_threshold = 6;
+							//increase threshold if reporting frequency and resolution of this
+							//  year doesn't match average
+							if (rep_accuracies[y] != reporting_resolution && rep_freqs[y] != reporting_freq)
+							{
+								iqr_threshold = 8;
+							}
+							if (std::abs((variances[y] - median_variance) / iqr_variance) > iqr_threshold)
+							{
+								//check for storms     
+								/*
+								winds_month = winds.data[int(month_ranges[year,month][0]):int(month_ranges[year,month][1])]                  
+                            slp_month = slp.data[int(month_ranges[year,month][0]):int(month_ranges[year,month][1])] */
+
+								bool storm = false;
+								if (true)
+								{
+									varraysize high_winds;
+									varraysize low_slp;
+									varraysize match_locs;
+
+									if (match_locs.size() > 0) storm = true;
+
+								}
+								else cout << " Write spurious" << endl;
+
+								//check the SLP first difference series to ensure a drop down
+								//  and climb out of minimum SLP / or climb up and down from maximum wind speed
+								varrayfloat diffs;
+								if (variable == "slp")
+									diffs;// np.diff(slp_month.compressed())
+								else if (variable == "windspeeds")
+									diffs;// = np.diff(winds_month.compressed())
+
+								int negs = 0, poss = 0;
+								int biggest_neg = 0, biggest_pos = 0;
+
+								for (int diff = 0; diff < diffs.size(); diff++)
+								{
+									if (diff > 0)
+									{
+										if (negs > biggest_neg)  biggest_neg = negs;
+										negs = 0;
+										poss += 1;
+									}
+									else
+									{
+										if (poss > biggest_pos) biggest_pos = poss;
+										poss = 0;
+										negs += 1;
+									}
+								}
+								if ((biggest_neg < 10) && (biggest_pos < 10) && !storm)
+								{
+									// not a hurricane, so mask
+									varraysize idx(month_ranges_years[y][month].second - month_ranges_years[y][month].first);
+									std::iota(std::begin(idx), std::end(idx), month_ranges_years[y][month].first);
+
+									station.setQc_flags(1, idx, flag_col[v]);
+										
+									logfile << "No Storm or Hurricane in  " << month + 1 << "  " << y + start.year() << "  . flagging " << endl;
+								}
+								else
+								{
+									//hurricane
+									logfile << "Storm or Hurricane in  " << month + 1 << "  " << y + start.year() << "   . Not flagging " << endl;
+									
+								}
+
+
+							}
+
+						}
+						else
+						{
+							iqr_threshold = 8;
+
+							if ((rep_accuracies[y] != reporting_resolution) && (rep_freqs[y] != reporting_freq))
+								iqr_threshold = 10;
+
+							if (std::abs(variances[y] - median_variance) / iqr_variance > iqr_threshold)
+							{
+								//remove the data
+								varraysize idx(month_ranges_years[y][month].second - month_ranges_years[y][month].first);
+								std::iota(std::begin(idx), std::end(idx), month_ranges_years[y][month].first);
+
+								station.setQc_flags(1, idx, flag_col[v]);
+							}
+						}
+					}
+				}
+
 			}
-			
+			varraysize flag_locs = npwhere(station.getQc_flags(flag_col[v]), "!", float(0));
 
+			print_flagged_obs_number(logfile, " Variance", variable, flag_locs.size());
 
+			//copy flags into attribute
+			st_var.setFlags(flag_locs, 1);
 
 			v++;
 		}
-
+		append_history(station, " Excess Variance Check ");
 	}
 }

@@ -20,7 +20,7 @@
 #include "clouds.h"
 #include "climatological.h"
 #include "distributional_gap.h"
-
+#include "variance.h"
 
 #include <vector>
 #include <ctime>

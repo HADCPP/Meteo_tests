@@ -940,6 +940,14 @@ namespace PYTHON_FUNCTION
 					if (v1[i] < value && v2[i] >= value2) index.push_back(i);
 				}
 		}
+		if (condition1 == "<")
+		{
+			if (condition2 == "!")
+				for (size_t i = 0; i < v1.size(); i++)
+				{
+					if (v1[i] < value && v2[i] != value2) index.push_back(i);
+				}
+		}
 		if (condition1 == "<=")
 		{
 			if (condition2 == ">=")
@@ -1116,7 +1124,7 @@ namespace PYTHON_FUNCTION
 		return vec;
 	}
 	template<typename T,typename S>
-	CMaskedArray<T> ma_masked_where(std::valarray<T> data,  T value, std::valarray<S> data2,S missing_value)
+	CMaskedArray<S> ma_masked_where(std::valarray<T> data,  T value, std::valarray<S> data2,S missing_value)
 	{
 		CMaskedArray<S> dummy = CMaskedArray<S>(data2);
 		dummy.masked(missing_value);
@@ -1130,45 +1138,75 @@ namespace PYTHON_FUNCTION
 		return dummy;
 	}
 	template<typename T>
+	CMaskedArray<T> ma_masked_where(std::valarray<T> data, const std::string condition, T value, std::valarray<T> data2)
+	{
+		CMaskedArray<T> dummy = CMaskedArray<S>(data2);
+		if (condition == "=")
+		{
+			for (size_t i = 0; i < data.size(); i++)
+			{
+				if (data[i] == value) 
+				{
+					dummy.masked(i);
+					
+				}
+			}
+		}
+		dummy.m_fill_value = value;
+		return dummy;
+	}
+	template<typename T>
 	varraysize ma_masked_where(CMaskedArray<T> data, const std::string condition,  T value)
 	{
 		std::vector<size_t> index;
 		if (condition == "=")
+		{
 			for (size_t i = 0; i < data.size(); i++)
 			{
-				if (data.m_mask[i] == false && data.m_data[i] == value) 
-					 index.push_back(i);
+				if (data.m_mask[i] == false && data.m_data[i] == value)
+					index.push_back(i);
 			}
+		}
 
 		if (condition == "!")
+		{
 			for (size_t i = 0; i < data.size(); i++)
 			{
 				if (data.m_mask[i] == false && data.m_data[i] != value) index.push_back(i);
 			}
+		}
 
 		if (condition == "<=")
+		{
 			for (size_t i = 0; i < data.size(); i++)
 			{
-				if (data.m_mask[i] == false &&  data.m_data[i] <= value) index.push_back(i);
+				if (data.m_mask[i] == false && data.m_data[i] <= value) index.push_back(i);
 			}
+		}
 
 		if (condition == "<")
+		{
 			for (size_t i = 0; i < data.size(); i++)
 			{
-				if (data.m_mask[i] == false &&  data.m_data[i] < value) index.push_back(i);
+				if (data.m_mask[i] == false && data.m_data[i] < value) index.push_back(i);
 			}
+		}
 
 		if (condition == ">")
+		{
 			for (size_t i = 0; i < data.size(); i++)
 			{
 				if (data.m_mask[i] == false && data.m_data[i] > value) index.push_back(i);
 			}
+		}
 
 		if (condition == ">=")
+		{
 			for (size_t i = 0; i < data.size(); i++)
 			{
 				if (data.m_mask[i] == false && data.m_data[i] >= value) index.push_back(i);
 			}
+		}
 		std::valarray<std::size_t> vec(index.size());
 		std::copy(index.begin(), index.end(), std::begin(vec));
 		return vec;
@@ -1288,6 +1326,7 @@ namespace PYTHON_FUNCTION
 
 		bool lastbin = true;
 		for (int i = 0; i < data.size(); i++)
+		{
 			for (int j = 0; j < bin.size(); j++)
 			{
 				if (data[i] >= bin[j] && data[i] < bin[j + 1])
@@ -1298,6 +1337,7 @@ namespace PYTHON_FUNCTION
 					lastbin = false;
 				}
 			}
+		}
 		if (density)
 		{
 			if (data.size() <= bin.size()) hist /= data.size();

@@ -203,40 +203,54 @@ namespace INTERNAL_CHECKS
 				{
 					flags[std::slice(month_ranges[lo].first, month_ranges[lo].second - month_ranges[lo].first,1)] = 1;
 				}
+
+				
 			}
 			// walk distribution from centre and see if any assymetry
-			varraysize sort_order;// = standardised_months[good_months].argsort();
 
+			varrayfloat standardised_months_sort = new_standardised_months.m_data[good_months];
+
+			// initialize original index locations
+			varraysize sort_order(standardised_months_sort.size());
+			std::iota(std::begin(sort_order), std::end(sort_order), 0);
+
+			// sort indexes based on comparing values in v
+			sort(std::begin(sort_order), std::end(sort_order),
+				[&standardised_months_sort](size_t i1, size_t i2) {return standardised_months_sort[i1] < standardised_months_sort[i2]; });
+
+			std::sort(std::begin(standardised_months_sort), std::end(standardised_months_sort));
+			
 			size_t mid_point = (good_months.size()) / 2;
 
 			bool good = true;
 			int iter = 1;
 			while (good)
 			{
-				if (/*standardised_months[good_months][sort_order][mid_point - iter] != standardised_months[good_months][sort_order][mid_point + iter]*/true)
+				if (standardised_months_sort[mid_point - iter] != standardised_months_sort[mid_point + iter])
 				{
 					//using IDL notation
-					//tempvals = [np.abs(standardised_months[good_months][sort_order][mid_point - iter]), np.abs(standardised_months[good_months][sort_order][mid_point + iter])];
-					varrayfloat tempvals{ 0, 1 };
+					varrayfloat tempvals{ std::abs(standardised_months_sort[mid_point - iter]), std::abs(standardised_months_sort[mid_point + iter]) };
+					
 					if (tempvals.min() != 0)
 					{
-						if (tempvals.max() / tempvals.min() >= 2. && tempvals.max() >= 1.5)
+						if ((tempvals.max() / tempvals.min()) >= 2. && tempvals.min() >= 1.5)
 						{
-							//# substantial asymmetry in distribution - at least 1.5 from centre and difference of 2.
-							varrayfloat bad;
+							// substantial asymmetry in distribution - at least 1.5 from centre and difference of 2.
+							varraysize bad = good_months[sort_order];
 							if (tempvals[0] == tempvals.max())
 							{
 								// LHS
-								//bad = good_months[0][sort_order][:mid_point - iter];
-															}
+								varraysize dum = bad[std::slice(0, mid_point - iter, 1)];
+								bad = dum;
+							}
 							else if (tempvals[1] == tempvals.max())
 							{
 								//RHS
-								//bad = good_months[0][sort_order][mid_point + iter:];
-								
+								varraysize dum = bad[std::slice(mid_point + iter, bad.size() - mid_point - iter, 1)];
+								bad = dum;
 							}
 
-							for (float b : bad)
+							for (size_t b : bad)
 							{
 								flags[std::slice(month_ranges[b].first, month_ranges[b].second - month_ranges[b].first, 1)] = 1;
 							}
@@ -247,12 +261,12 @@ namespace INTERNAL_CHECKS
 				}
 
 				iter += 1;
-				if (iter == mid_point)
-					break;
+				if (iter == mid_point) break;
+					
 			}
 
-			
 		}
+		cout << endl;
 	}
 
 	//#************************************************************************
@@ -290,6 +304,7 @@ namespace INTERNAL_CHECKS
 						Concatenate(windspeeds_month, st_var_wind.getAllData()(year.first, year.second));
 					y++;
 				}
+				windspeeds_month.masked(st_var_wind.getAllData().m_fill_value);
 				windspeeds_month_average = dgc_get_monthly_averages(windspeeds_month, OBS_LIMIT, Cast<float>(st_var_wind.getMdi()), MEAN);
 
 				windspeeds_month_mad = mean_absolute_deviation(windspeeds_month.compressed(),true);
@@ -304,7 +319,7 @@ namespace INTERNAL_CHECKS
 			datacount_dummy = concatenate_months(month_ranges_years[month], all_filtered, this_month_filtered, year_ids_dummy, false);
 
 			varrayfloat Compress = CompressedMatrice(this_month_filtered);
-			WBSF::CStatistic this_month_filtered_data;
+			WBSF::CStatisticEx this_month_filtered_data;
 
 			for (size_t i = 0; i < Compress.size(); i++)
 			{
@@ -342,7 +357,7 @@ namespace INTERNAL_CHECKS
 
 					varrayfloat bins, bincenters, plot_bincenters;
 
-					create_bins(Compress_month_values, BIN_SIZE / 10, bins, plot_bincenters);
+					create_bins(Compress_month_values, float(BIN_SIZE/10), bins, plot_bincenters);
 
 					create_bins(Compress_month_values, BIN_SIZE, bins, bincenters);
 
@@ -364,9 +379,10 @@ namespace INTERNAL_CHECKS
 						// Use Gauss-Hermite polynomials to add skew and kurtosis to Gaussian fit - January 2015 ^RJHD
 
 					}
-
 					else
 					{
+						if (month == 8)
+							cout << endl;
 						varrayfloat gaussian = fit_gaussian(bincenters, hist, hist.max(),stat[WBSF::MEAN],stat[WBSF::STD_DEV]);
 
 						// assume the same threshold value
@@ -375,6 +391,7 @@ namespace INTERNAL_CHECKS
 
 						plot_gaussian = Gaussian(plot_bincenters, gaussian);
 					}
+					
 
 					size_t uppercount = npwhere(Compress_month_values,">", u_minimum_threshold).size();
 					size_t lowercount = npwhere(Compress_month_values, "<", l_minimum_threshold).size();
@@ -398,15 +415,18 @@ namespace INTERNAL_CHECKS
 
 								this_year_flags = flags[std::slice(year.first, year.second - year.first, 1)];
 
-								gap_cleaned_locations = npwhere(((this_year_data.m_data - monthly_median) / iqr), " >", float(gap_start));
-
+								gap_cleaned_locations = npwhere(((this_year_data.m_data - monthly_median) / iqr), ">", float(gap_start));
+								
 								this_year_flags[gap_cleaned_locations] = 1;
-
-								flags[std::slice(year.first, year.second - year.first, 1)] = this_year_flags;
+								varraysize idx(year.second - year.first);
+								std::iota(std::begin(idx), std::end(idx), year.first);
+								flags[idx] = this_year_flags;
+								
 							}	
 						}
 					}
-
+					
+					
 					if (lowercount > 0)
 					{
 						gap_start = dgc_find_gap(hist, binEdges, l_minimum_threshold);
@@ -416,33 +436,35 @@ namespace INTERNAL_CHECKS
 
 							for (pair<int, int> year : month_ranges_years[month])
 							{
+								
 
 								this_year_data = all_filtered(year.first, year.second);
 
 								this_year_flags = flags[std::slice(year.first, year.second - year.first, 1)];
 
 								gap_cleaned_locations = npwhereAnd(((this_year_data.m_data - monthly_median) / iqr),"<", float(gap_start), this_year_data.m_mask,"!",true);
-
+								
 								this_year_flags[gap_cleaned_locations] = 1;
-
-								flags[std::slice(year.first, year.second - year.first, 1)] = this_year_flags;
+								varraysize idx(year.second - year.first);
+								std::iota(std::begin(idx), std::end(idx), year.first);
+								flags[idx] = this_year_flags;
 
 								if (windspeeds)
 								{
 									this_year_flags[gap_cleaned_locations] = 2; // tentative flags
 
-									float slp_average = dgc_get_monthly_averages(CompressedMatrice(this_month_data), OBS_LIMIT, Cast<float>(st_var.getMdi()), MEAN);
+									//float slp_average = dgc_get_monthly_averages(CompressedMatrice(this_month_data), OBS_LIMIT, Cast<float>(st_var.getMdi()), MEAN);
 
-									float slp_mad = mean_absolute_deviation(CompressedMatrice(this_month_data), true);
+									//float slp_mad = mean_absolute_deviation(CompressedMatrice(this_month_data), true);
 
-									varraysize storms = npwhere(((windspeeds_month.m_data - windspeeds_month_average) / windspeeds_month_mad), ">", float(4.5));
-										/*(this_month_data.c - slp_average) / slp_mad) > 4.5));*/
+									//varraysize storms = npwhere(((windspeeds_month.m_data - windspeeds_month_average) / windspeeds_month_mad),">", float(4.5));
+									//	/*(this_month_data.c - slp_average) / slp_mad) > 4.5));*/
 
-									if (storms.size() >= 2)
-									{
-										varraysize storm_1diffs = npDiff(storms);
-										varraysize separations = npwhere(storm_1diffs,"!",size_t(1));
-									}
+									//if (storms.size() >= 2)
+									//{
+									//	varraysize storm_1diffs = npDiff(storms);
+									//	varraysize separations = npwhere(storm_1diffs,"!",size_t(1));
+									//}
 								}
 							}
 						}
@@ -450,7 +472,6 @@ namespace INTERNAL_CHECKS
 					}
 				}
 			}
-			
 		}
 
 		return flags; // dgc_all_obs
@@ -464,6 +485,7 @@ namespace INTERNAL_CHECKS
 		int v = 0;
 		for (string variable : variable_list)
 		{
+			
 			varrayfloat flags= station.getQc_flags(flag_col[v]);
 			dgc_monthly(station, variable,flags, start, end);
 			station.setQc_flags(flags, flag_col[v]);
@@ -477,11 +499,11 @@ namespace INTERNAL_CHECKS
 			else
 			{
 				flags = station.getQc_flags(flag_col[v]);
-				dgc_all_obs(station, variable, flags, start, end, true, false);
+				dgc_all_obs(station, variable, flags, start, end, false, false);
 				station.setQc_flags(flags, flag_col[v]);;
 			}
 
-			varraysize flag_locs = npwhere(station.getQc_flags()[flag_col[v]]," !", float(0));
+			varraysize flag_locs = npwhere(station.getQc_flags()[flag_col[v]],"!", float(0));
 
 			
 			print_flagged_obs_number(logfile, "Distributional Gap", variable, flag_locs.size());
@@ -493,7 +515,7 @@ namespace INTERNAL_CHECKS
 
 			//# MATCHES IDL for 030660-99999, 2 flags in T, 30-06-2014
 
-
+			v++;
 		}
 		append_history(station, "Distributional Gap Check");
 	}

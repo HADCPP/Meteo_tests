@@ -14,6 +14,8 @@
 #include <iostream>
 #include <map>
 #include <cmath>
+#include <algorithm>
+#include <numeric>
 
 namespace
 {

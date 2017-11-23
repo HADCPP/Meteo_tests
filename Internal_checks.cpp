@@ -138,7 +138,7 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.gap)
 			{
-					dgc(station, { "temperatures","dewpoints","slp"}, {5,6,7 },DATESTART,DATEEND, logfile);
+					//dgc(station, { "temperatures","dewpoints","slp"}, {5,6,7 },DATESTART,DATEEND, logfile);
 			}
 			if (mytest.records)
 			{
@@ -172,7 +172,7 @@ namespace INTERNAL_CHECKS
 			}
 			if (mytest.variance)
 			{
-
+				evc(station, { "temperatures", "dewpoints", "slp", "windspeeds" }, { 58, 59, 60, 61 }, DATESTART, DATEEND, logfile);
 			}
 			//Write to file
 			if (first)

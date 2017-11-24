@@ -173,12 +173,13 @@ namespace INTERNAL_CHECKS
 			if (mytest.variance)
 			{
 				evc(station, { "temperatures", "dewpoints", "slp", "windspeeds" }, { 58, 59, 60, 61 }, DATESTART, DATEEND, logfile);
+				UTILS::apply_windspeed_flags_to_winddir(station); 
 			}
 			//Write to file
 			if (first)
 			{
 				string filename = NETCDF_DATA_LOCS + (station).getId() + "_internal.nc";
-				//NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
+				NETCDFUTILS::write(filename, station, process_var, carry_thru_vars, match_to_compress);
 			}
 			else if (second)
 			{

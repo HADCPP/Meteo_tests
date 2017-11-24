@@ -17,7 +17,7 @@
 
 namespace
 {
-	const int MAD_THRESHOLD = 4;
+	const float MAD_THRESHOLD = 4.;
 	const int DATA_COUNT_THRESHOLD = 120;
 
 }

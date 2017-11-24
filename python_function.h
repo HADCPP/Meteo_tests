@@ -242,6 +242,8 @@ public:
 		CMaskedArray<T> ma;
 		ma.m_mask = m_mask[std::slice(lb, ub - lb, 1)];
 		ma.m_data = m_data[std::slice(lb, ub - lb, 1)];
+		ma.m_fill_value = m_fill_value;
+		ma.masked(m_fill_value);
 		return ma;
 	}
 	CMaskedArray<T> operator[](varraysize indices)
@@ -1422,6 +1424,22 @@ namespace PYTHON_FUNCTION
 		}
 		val.masked(val1.m_fill_value);
 		val1.resize(val.size());
+		val1 = val;
+	}
+	inline void Concatenate(std::vector<CMaskedArray<float>>& val1, const std::vector<CMaskedArray<float>>& val2)
+	{
+		std::vector<CMaskedArray<float>>  val;
+		for (size_t i = 0; i < val1.size(); i++)
+		{
+			val.push_back(val1[i]);
+			
+		}
+		
+		for (size_t i = 0; i < val2.size(); i++)
+		{
+			val.push_back(val2[i]);
+		}
+		val1.clear();
 		val1 = val;
 	}
 	template<typename T>

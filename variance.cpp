@@ -34,16 +34,16 @@ namespace INTERNAL_CHECKS
 
 				for (size_t i = 0; i < month_data_count.size(); i++)
 				{
-					valarray<int> dummy(0, 12);
+					valarray<int> dummy(0, month_ranges_years[0].size());
 					month_data_count[i] = dummy;
 				}
 
 				month_data_count[month]=concatenate_months(month_ranges_years[v], st_var.getAllData(), this_month, year_ids,mdi, true);
 
 				//winsorize and get hourly climatology 
-				for (size_t h = 0; h < 24; ++month)
+				for (size_t h = 0; h < 24; h++)
 				{
-					CMaskedArray<float> this_hour = this_month[h];
+					CMaskedArray<float> this_hour = ExtractColumn(this_month, h);
 					//need to have data if this is going to work!
 					if (this_hour.compressed().size() > 0)
 					{
@@ -71,16 +71,13 @@ namespace INTERNAL_CHECKS
 					}
 				}
 
-				
-
 				valarray<CMaskedArray<float>> anomalies(this_month.size());
 
-				for (size_t i = 0; i < this_month.size(); ++i)
+				for (size_t i = 0; i < this_month.size(); i++)
 				{
 					anomalies[i] = this_month[i];
 					anomalies[i].m_data -= hourly_clims;
-					//anomalies[i].masked(this_month[i].m_fill_value);
-
+		
 				}
 				//extract IQR of anomalies(using 1 / 2 value to match IDL)
 				float iqr;
@@ -99,21 +96,21 @@ namespace INTERNAL_CHECKS
 					normed_anomalies[i] /= iqr;
 				}
 
-				CMaskedArray<float> variances(mdi, month_ranges_years.size());
+				CMaskedArray<float> variances(mdi, month_ranges_years[0].size());
 				variances.m_mask = false;
-				varrayfloat rep_accuracies(mdi, month_ranges_years.size());
-				varrayfloat rep_freqs(mdi, month_ranges_years.size());
+				varrayfloat rep_accuracies(mdi, month_ranges_years[0].size());
+				varrayfloat rep_freqs(mdi, month_ranges_years[0].size());
 
 				//extract variance of normalised anomalies for each year
 				
-				for (int y = 0; y < month_ranges_years.size();y++)
+				for (int y = 0; y < month_ranges_years[0].size(); y++)
 				{
 					varraysize year_locs = npwhere(year_ids, "=", y);
 
 					valarray<CMaskedArray<float>> this_year = normed_anomalies[year_locs];
 					CMaskedArray<float> this_year_1D = Shape(this_year);
-					varrayfloat Compress = CompressedMatrice(this_year);
-					varrayfloat Compress1 = this_year_1D.compressed();
+					this_year_1D.masked(mdi);
+					varrayfloat Compress = this_year_1D.compressed();
 					if (Compress.size() >= 30)
 					{
 						variances.m_data[y] = mean_absolute_deviation(Compress, true);
@@ -126,7 +123,7 @@ namespace INTERNAL_CHECKS
 				float median_variance,iqr_variance;
 				//get median and IQR of variance for all years for this month
 
-				if (good.size() > 0)
+				if (good.size() > 10)
 				{
 					median_variance = idl_median(variances[good].compressed());
 					iqr_variance = IQR(variances[good].compressed()) / 2.; // to match IDL
@@ -141,51 +138,54 @@ namespace INTERNAL_CHECKS
 
 				//if SLP, then get median and MAD of SLP and windspeed for month
 
+				CMetVar& winds = station.getMetvar("windspeeds");
+				CMetVar& slp = station.getMetvar("slp");
+
+				float median_wind ;
+				float median_slp;
+
+				float wind_MAD ;
+				float slp_MAD;
+
 				if (variable == "slp" || variable == "windspeeds")
 				{
-					CMetVar& winds = station.getMetvar("windspeeds");
-					CMetVar& slp = station.getMetvar("slp");
-
-					//refactor this as similar in style to how target data extracted 
+										//refactor this as similar in style to how target data extracted 
 					CMaskedArray<float> winds_year;
-					std::vector <std::vector<CMaskedArray<float >>> winds_month;
+					std::vector<CMaskedArray<float >> winds_month;
 					CMaskedArray<float> slp_year;
-					std::vector <std::vector<CMaskedArray<float >>> slp_month;
-					for (int y = 0; y < month_ranges_years.size(); y++)
+					std::vector<CMaskedArray<float >> slp_month;
+					for (int y = 0; y < month_ranges_years[0].size(); y++)
 					{
 						
-
+						
 						if (y == 0)
 						{
-							winds_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
-							winds_month.push_back(C_reshape(winds_year,24));
+							winds_year = winds.getAllData()(month_ranges_years[month][y].first, month_ranges_years[month][y].second);
+							winds_month=C_reshape(winds_year,24);
 
-							slp_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
-							slp_month.push_back(C_reshape(winds_year, 24));
+							slp_year = slp.getAllData()(month_ranges_years[month][y].first, month_ranges_years[month][y].second);
+							slp_month=C_reshape(slp_year, 24);
 
 						}
 						else
 						{
 
-							winds_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
-							winds_month.push_back(C_reshape(winds_year, 24));
+							winds_year = winds.getAllData()(month_ranges_years[month][y].first, month_ranges_years[month][y].second);
+							Concatenate(winds_month,C_reshape(winds_year, 24));
 
-							slp_year = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
-							slp_month.push_back(C_reshape(winds_year, 24));
+							slp_year = slp.getAllData()(month_ranges_years[month][y].first, month_ranges_years[month][y].second);
+							Concatenate(slp_month,C_reshape(slp_year, 24));
 						}
 					}
-					/*
-					median_wind = np.ma.median(winds_month)
-					median_slp  = np.ma.median(slp_month)
+					varrayfloat winds_month_compress = CompressedMatrice(winds_month);
+					varrayfloat slp_month_compress = CompressedMatrice(slp_month);
+					
+					 median_wind = idl_median(winds_month_compress);
+					 median_slp = idl_median(slp_month_compress);
 
-					wind_MAD = utils.mean_absolute_deviation(winds_month.compressed())
-					slp_MAD = utils.mean_absolute_deviation(slp_month.compressed())
+					 wind_MAD = mean_absolute_deviation(winds_month_compress);
+					 slp_MAD = mean_absolute_deviation(slp_month_compress);
 
-					if diagnostics:
-					print ("median windspeed {} m/s, MAD = {}".format(median_wind, wind_MAD))
-					print ("median slp {} hPa, MAD = {}".format(median_slp, slp_MAD))
-
-					*/
 
 				}
 				//now test to see if variance exceeds expected range
@@ -208,18 +208,20 @@ namespace INTERNAL_CHECKS
 							if (std::abs((variances[y] - median_variance) / iqr_variance) > iqr_threshold)
 							{
 								//check for storms     
-								/*
-								winds_month = winds.data[int(month_ranges[year,month][0]):int(month_ranges[year,month][1])]                  
-                            slp_month = slp.data[int(month_ranges[year,month][0]):int(month_ranges[year,month][1])] */
+								
+								CMaskedArray<float> winds_month_storm = winds.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
+								CMaskedArray<float>  slp_month_storm = slp.getAllData()(month_ranges_years[y][month].first, month_ranges_years[y][month].second);
 
 								bool storm = false;
-								if (true)
+								if (winds_month_storm.compressed().size() >= 1 && slp_month_storm.compressed().size() >=1)
 								{
-									varraysize high_winds;
-									varraysize low_slp;
-									varraysize match_locs;
+									// locations where winds greater than threshold
+									varraysize high_winds = npwhere((winds_month_storm.m_data - median_wind) / wind_MAD,">", MAD_THRESHOLD);
+									varraysize low_slps =  npwhere((median_slp - slp_month_storm.m_data) / slp_MAD ,">", MAD_THRESHOLD);
 
-									if (match_locs.size() > 0) storm = true;
+									varraysize match_loc= high_winds[in1D(high_winds,low_slps)];
+
+									if (match_loc.size() > 0) storm = true;
 
 								}
 								else cout << " Write spurious" << endl;
@@ -228,14 +230,14 @@ namespace INTERNAL_CHECKS
 								//  and climb out of minimum SLP / or climb up and down from maximum wind speed
 								varrayfloat diffs;
 								if (variable == "slp")
-									diffs;// np.diff(slp_month.compressed())
+									diffs = npDiff(slp_month_storm.compressed());
 								else if (variable == "windspeeds")
-									diffs;// = np.diff(winds_month.compressed())
+									diffs = npDiff(winds_month_storm.compressed());
 
 								int negs = 0, poss = 0;
 								int biggest_neg = 0, biggest_pos = 0;
 
-								for (int diff = 0; diff < diffs.size(); diff++)
+								for (float diff :diffs )
 								{
 									if (diff > 0)
 									{
@@ -266,10 +268,7 @@ namespace INTERNAL_CHECKS
 									logfile << "Storm or Hurricane in  " << month + 1 << "  " << y + start.year() << "   . Not flagging " << endl;
 									
 								}
-
-
 							}
-
 						}
 						else
 						{

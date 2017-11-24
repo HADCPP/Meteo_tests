@@ -16,13 +16,14 @@
 #include <map>
 #include <string>
 #include <typeinfo.h>
+#include <valarray>
 
 
 
 
 namespace
 {
-	std::string LOG_OUTFILE_LOCS = "D:\\HadISD++\\Data\\Log";
+	std::string LOG_OUTFILE_LOCS = "D:\\HadISD++\\Data\\Log\\";
 	std::string NETCDF_DATA_LOCS = "D:\\HadISD++\\Data\\NetCDF_files\\";
 	std::string CSV_OUTFILE_LOCS = "D:\\HadISD++\\Data\\PEI 2015-2016H\\";
 	const int INTMDI = -999;
@@ -116,7 +117,7 @@ namespace NETCDFUTILS
 	}
 	
 	template<typename T>
-	inline void CreateTab(std::vector<T> v_tab, T *tab)
+	inline void CreateTab(std::vector<T>& v_tab, T *tab)
 	{
 		
 		for (int i = 0; i < v_tab.size(); i++)
@@ -124,8 +125,21 @@ namespace NETCDFUTILS
 			*(tab+i) =  v_tab[i];
 		}
 	}
+	template<typename T>
+	inline void CreateMat(std::valarray<std::valarray<T>>& v_tab, T **tab)
+	{
+		
+		for (int i = 0; i < v_tab.size(); i++)
+		{
+			for (int j = 0; j < v_tab[0].size(); j++)
+			{
+				tab [i][j] = v_tab[i][j];
+				
+			}
+		}
+	}
 	/*  Find the attribute whose name is in "chaine" 
-	 // of the netCDF variable var 
+	  of the netCDF variable var 
 	*/
 	template<typename T>
 	inline T getAttribute(netCDF::NcVar var, const std::string chaine)

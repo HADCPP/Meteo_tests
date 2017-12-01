@@ -215,6 +215,19 @@ public:
 		}
 		m_fill_value = missing_value;
 	}
+	void masked()
+	{
+		m_masked_indices.clear();
+		for (size_t i = 0; i < m_data.size(); ++i)
+		{
+			if (m_data[i] == m_fill_value)
+			{
+				m_mask[i] = true;
+				m_masked_indices.push_back(i);
+			}
+			else m_mask[i] = false;
+		}
+	}
 	size_t size() const{return m_data.size();}
 	
 	void resize(size_t val,T value= T(0))
@@ -1329,7 +1342,8 @@ namespace PYTHON_FUNCTION
 		bool lastbin = true;
 		for (int i = 0; i < data.size(); i++)
 		{
-			for (int j = 0; j < bin.size(); j++)
+			lastbin = true;
+			for (int j = 0; j < bin.size()-1; j++)
 			{
 				if (data[i] >= bin[j] && data[i] < bin[j + 1])
 					hist[j]++;
@@ -1342,8 +1356,10 @@ namespace PYTHON_FUNCTION
 		}
 		if (density)
 		{
-			if (data.size() <= bin.size()) hist /= data.size();
-			else hist /= bin.size();
+			for (int j = 0; j < bin.size() - 1; j++)
+			{
+				 hist[j] /= ((bin[j+1]-bin[j])*data.size());
+			}
 		}
 		return hist;
 

@@ -18,7 +18,6 @@ namespace INTERNAL_CHECKS
 			CMetVar& st_var = station.getMetvar(variable);
 			float mdi = Cast<float>(st_var.getMdi());
 			float reporting_resolution = reporting_accuracy(apply_filter_flags(st_var));
-
 			int  reporting_freq = reporting_frequency(apply_filter_flags(st_var));
 			std::vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
 			

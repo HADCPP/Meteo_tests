@@ -1,3 +1,4 @@
+#pragma once
 #include "station.h"
 #include "utils.h"
 #include "python_function.h"
@@ -12,13 +13,16 @@
 #include <map>
 #include <cmath>
 
+namespace
+{
 
+	int DEGREEBINS = 45;
+	double PROB_THRESHOLD = 0.01;
+}
 namespace INTERNAL_CHECKS
 {
 
 
-	int DEGREEBINS = 45;
-	double PROB_THRESHOLD = 0.01;
 	/*
 	Select occurrences of wind speed and direction which are 
     logically inconsistent with measuring practices.
@@ -67,6 +71,6 @@ namespace INTERNAL_CHECKS
 		std::ofstream& logfile);
 
 	// Specific wind speed and direction checks
-	void wdc(CStation &station, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end,
+	void wdc(CStation& station, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end,
 		std::ofstream& logfile);
 }

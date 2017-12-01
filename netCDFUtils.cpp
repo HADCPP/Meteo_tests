@@ -599,6 +599,7 @@ namespace NETCDFUTILS
 
 		char const * const FileName = filename1.c_str();
 		NcFile outfile(FileName, NcFile::replace, NcFile::nc4classic);  // Create new netcdf files
+		if (outfile.isNull()) return;
 		//sort length of time axis if compressed time
 		NcDim time_dim;
 		NcDim test_dim;
@@ -619,7 +620,7 @@ namespace NETCDFUTILS
 		if (write_QC_flags)
 		{
 			
-			int qc_test_length = station.getQc_flags()[0].size();
+			int qc_test_length = station.getQc_flags().size();
 			test_dim = outfile.addDim("test", qc_test_length);
 		}
 		if (write_flagged_obs)
@@ -655,8 +656,7 @@ namespace NETCDFUTILS
 
 		//station ID as base variable
 		NcVar nc_var = outfile.addVar("station id", ncChar, long_char_dim);
-
-		
+				
 		nc_var.putAtt("long_name", "Station ID number");
 		char strtoarray_ID[10];
 		strcpy(strtoarray_ID, station.getId().c_str());
@@ -709,17 +709,17 @@ namespace NETCDFUTILS
 			try
 			{
 				vector<NcDim> time_test;
-				time_test.push_back(time_dim);
 				time_test.push_back(test_dim);
-				nc_var = outfile.addVar("quality_control_flags", ncDouble,time_test);
+				time_test.push_back(time_dim);
+				nc_var = outfile.addVar("quality_control_flags", ncFloat,time_test);
 				nc_var.putAtt("units", "1");
 				nc_var.putAtt("long_name", "Quality Control status for individual obs");
 
-				int line;
+				int line=station.getQc_flags().size();
 
-				(indices.size() != 0) ? line = indices.size() : line = station.getQc_flags()[0].size();
+				int col;
+				(indices.size() != 0) ? col = indices.size(): col = station.getQc_flags()[0].size();
 
-				int col = station.getQc_flags().size();
 				float **qc_flags = new float*[line];
 
 				for (int i = 0; i < line; i++)
@@ -729,7 +729,13 @@ namespace NETCDFUTILS
 				if (indices.size() != 0)
 				{
 					
-					valarray<valarray<float>> dum = station.getQc_flags()[indices];
+					valarray<valarray<float>> dum(line);
+					
+					for (int i = 0; i < dum.size(); i++)
+					{
+						dum[i] = station.getQc_flags(i)[indices];
+						
+					}
 					CreateMat<float>(dum, qc_flags);
 					nc_var.putVar(qc_flags);
 				}
@@ -738,15 +744,17 @@ namespace NETCDFUTILS
 					CreateMat<float>(station.getQc_flags(), qc_flags);
 					nc_var.putVar(qc_flags);
 				}
+				
 				for (int i = 0; i < col; i++)
 					delete[] qc_flags[i];
 
 				delete[] qc_flags;
-
 			}
-			catch (NcException )
+			catch (NcException& e )
 			{
+				cout << e.what() << endl;
 				cout << "qc_flags attribute doesn't exist" << endl;
+
 			}
 		}
 		//combine all flagged observations together to output as single array in netcdf file - if available

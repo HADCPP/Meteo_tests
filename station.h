@@ -71,8 +71,8 @@ public:
 	std::valarray<std::pair<float, float>> getReportingStats(){ return m_reporting_stats; }
 	varrayfloat& getData(){ return m_dataVar.m_data; }
 	const varrayfloat& getData()const{ return m_dataVar.m_data; }
-	CMaskedArray<float>  getAllData(){ return m_dataVar; }
-	CMaskedArray<float> getFlags(){ return m_flags; }
+	CMaskedArray<float>&  getAllData(){ return m_dataVar; }
+	CMaskedArray<float>& getFlags(){ return m_flags; }
 	std::string getValidMax(){return m_valid_max ; }
 	std::string getValidMin(){return m_valid_min ; }
 	std::string getCoordinates(){ return m_coordinates; }

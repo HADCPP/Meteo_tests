@@ -11,15 +11,17 @@ namespace INTERNAL_CHECKS
 {
 	void logical_checks(CStation &station, std::vector<int> flag_col, std::ofstream& logfile)
 	{
-		CMetVar speed = station.getMetvar("windspeeds");
-		CMetVar direction = station.getMetvar("winddirs");
+		CMetVar& speed = station.getMetvar("windspeeds");
+		CMetVar& direction = station.getMetvar("winddirs");
 
 		//recover direction information where the speed is Zero
 
 		varraysize fix_zero_direction = npwhereAnd<float,bool>(speed.getData(), "=", float(0), direction.getAllData().m_mask, "=", true);
-		direction.setData(fix_zero_direction, float(0),false);
+		direction.getAllData().m_data[fix_zero_direction] = 0;
+		direction.getAllData().m_mask[fix_zero_direction] = false;
 		station.setQc_flags(float(-1),fix_zero_direction, flag_col[1]);
 
+		direction.getAllData().masked();
 		//negative speeds
 
 		varraysize  negative_speed = ma_masked_where(speed.getAllData(), "<", float(0));
@@ -35,17 +37,17 @@ namespace INTERNAL_CHECKS
 		station.setQc_flags(float(1), wrapped_direction, flag_col[1]);
 
 		//no direction possible if speed == 0
-		varraysize  bad_direction = ma_masked_where(direction.getAllData(), ">", float(360));
+		varraysize  bad_direction = npwhereAnd(speed.getData(), "=", float(0), direction.getData(), "!", float(0));
 		station.setQc_flags(float(1), bad_direction, flag_col[1]);
 
 		//northerlies given as 360, not 0 --> calm
 
-		varraysize  bad_speed = npwhereAnd(speed.getData(), "=", float(0), direction.getData(), "!", float(0));
+		varraysize  bad_speed = npwhereAnd(direction.getData(), "=", float(0), speed.getData(), "!", float(0));
 		station.setQc_flags(float(1), bad_speed, flag_col[0]);
 
 		//and output to file/screen
-		varraysize flag_locs0 = npwhere(station.getQc_flags(flag_col[0]), float(0), " > ");   // in case of direction fixes
-		varraysize flag_locs1 = npwhere(station.getQc_flags(flag_col[1]), float(0), ">");  // in case of direction fixes
+		varraysize flag_locs0 = npwhere(station.getQc_flags(flag_col[0]), ">", float(0));   // in case of direction fixes
+		varraysize flag_locs1 = npwhere(station.getQc_flags(flag_col[1]), ">", float(0));  // in case of direction fixes
 
 		print_flagged_obs_number(logfile, "Wind Logical Checks", "windspeeds", flag_locs0.size());
 		print_flagged_obs_number(logfile, "Wind Logical Checks", "winddirs", flag_locs1.size());
@@ -84,36 +86,40 @@ namespace INTERNAL_CHECKS
 		CMaskedArray<float> speed = station.getMetvar("windspeeds").getAllData();
 		CMaskedArray<float> direction = station.getMetvar("winddirs").getAllData();
 		varrayfloat flags = station.getQc_flags()[flag_col];
-		map<int, int> month_ranges = month_starts_in_pairs(start, end);
-		std::vector<std::vector<pair<int, int>>> month_ranges_years;
-		reshapeYear(month_ranges_years, month_ranges);
+		std::vector<pair<int, int>> month_ranges = month_starts_in_pairs(start, end);
+		std::vector<std::valarray<pair<int, int>>> month_ranges_years= L_reshape3(month_ranges,12);
+		
 		//histogram of wind directions ( ~ unravelled wind-rose)
 		int bw = 20;
 		varrayfloat binEdges = arange(float(360 + bw), float(0), float(bw));
-		varrayfloat full_hist = histogram(direction.m_data, binEdges, true);
+		varrayfloat full_hist = histogram(direction.compressed(), binEdges,true);
+
 		//use rmse as this is known(Chi - sq remains just in case)
-		CMaskedArray<float> rmse = CMaskedArray<float>(float(- 1), month_ranges_years.size());
-		CMaskedArray<float> chisq = CMaskedArray<float>(float(-1), month_ranges_years.size());
+		CMaskedArray<float> rmse = CMaskedArray<float>(float(- 1), month_ranges_years[0].size());
+		CMaskedArray<float> chisq = CMaskedArray<float>(float(-1), month_ranges_years[0].size());
+
 		//run through each year to extract RMSE's
 		varrayfloat hist(binEdges.size());
-		int y = 0;
-		for (std::vector<pair<int,int>> year : month_ranges_years)
+		
+		for (int y = 0; y < rmse.size();y++)
 		{
-			varraysize indices(year.size());
-			for (size_t i = 0; i < indices.size(); ++i)
+			size_t taille = month_ranges_years[11][y].first - month_ranges_years[0][y].first;
+
+			varraysize indices(taille);
+			for (size_t i = 0; i < indices.size();i++)
 			{
-				indices[i] = year[i].first;
+				indices[i] = month_ranges_years[0][y].first+i;
 			}
 			CMaskedArray<float> _direction = direction[indices];
 
 			if (_direction.compressed().size() > 0)
 			{
-				hist = histogram(_direction.m_data, binEdges, true);
+				hist = histogram(_direction.compressed(), binEdges, true);
 				chisq.m_data[y] = ((full_hist - hist)*(full_hist - hist) / (full_hist + hist)).sum() / 2.;
 				rmse.m_data[y] = std::sqrt(((full_hist - hist)*(full_hist - hist)).sum() / hist.size());
 			}
 			else rmse.m_mask[y] = true;
-			y++;
+			
 		}
 		//Now to bin up the differences and see what the fit is.
 		//need to have values spread so can bin!
@@ -133,12 +139,13 @@ namespace INTERNAL_CHECKS
 			//try to get decent fit to bulk of obs.
 
 			varrayfloat gaussian = fit_gaussian(bincenters, hist, hist.max(), mu, std);
-			float threshold;
+			//invert Gaussian to find initial threshold, then hunt for first gap beyond
+			float threshold = invert_gaussian(PROB_THRESHOLD, gaussian);
 			/*
 			 if dist_pdf[-1] < PROB_THRESHOLD:
             # then curve has dropped below the threshold, so can find some updated ones.
             threshold = -np.where(dist_pdf[::-1] > PROB_THRESHOLD)[0][0]
-        else:
+			 else:
             threshold = bincenters[-1]*/
 
 			int n = 0;
@@ -169,21 +176,25 @@ namespace INTERNAL_CHECKS
 			}
 			//run through each year to extract RMSE's
 			int y = 0;
-			for (std::vector<pair<int, int>> year : month_ranges_years)
+			for (int y = 0; y < rmse.size(); y++)
 			{
 				if (rmse[y] > gap)
 				{
 					//only flag where there are observations
-					varraysize indices(year.size());
-					for (size_t i = 0; i < indices.size(); ++i)
+					size_t taille = month_ranges_years[y][0].second - month_ranges_years[y][0].first;
+					varraysize indices(taille);
+					for (size_t i = 0; i < indices.size(); i++)
 					{
-						indices[i] = year[i].first;
+						indices[i] = month_ranges_years[y][0].first + i;
 					}
 					valarray<bool> dummy1 = direction.m_mask[indices];
 					valarray<bool> dummy2 = speed.m_mask[indices];
 					varraysize good = npwhereOr(dummy1, "=", false, dummy2, "=", false);
-					// flags[int(year[0][0]):int(year[-1][0])][good] = 1
 
+					varrayfloat flags_dum(float(0),indices.size());
+					flags_dum[good] = 1;
+					
+					flags[indices] = flags_dum;
 				}
 				else rmse.m_mask[y] = false;
 				y++;
@@ -191,7 +202,7 @@ namespace INTERNAL_CHECKS
 		}
 		//and apply the flags and output text
 		
-		varraysize flag_locs = npwhere(flags, float(0), "!");
+		varraysize flag_locs = npwhere(flags, "!", float(0));
 		print_flagged_obs_number(logfile, "Wind Rose Check"," windspeeds / dirs", flag_locs.size());
 
 		station.setQc_flags(flags,flag_col);
@@ -199,7 +210,7 @@ namespace INTERNAL_CHECKS
 		
 		station.getMetvar("windspeeds").setFlags(flag_locs,float(1));
 		station.getMetvar("winddirs").setFlags(flag_locs, float(1));
-		}
+	}
 		
 	void wdc(CStation &station, std::vector<int> flag_col, boost::gregorian::date start, boost::gregorian::date  end,
 		std::ofstream& logfile)
